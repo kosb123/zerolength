@@ -1,222 +1,279 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import parameter from '../store/store';
 
-function MemberForm({ onBack }) {
-  const members = parameter(state => state.members || []);
-  const setMembers = parameter(state => state.setMembers);
-  
-  // nextMemberId 계산 시 undefined 방지
-  const maxId = members.length > 0 ? Math.max(...members.map(m => m.MemberID || 0)) : 0;
-  const nextMemberId = maxId + 1;
+function Members({ onBack }) {
+  const [elemId, setElemId] = useState(1);
+  const [node1, setNode1] = useState(0);
+  const [node2, setNode2] = useState(0);
+  const [matId, setMatId] = useState(0);
 
-  // 숫자 입력 상태는 빈 문자열로 초기화
-  const [nodeA, setNodeA] = useState('');
-  const [nodeB, setNodeB] = useState('');
-  const [material, setMaterial] = useState('');
-  const [area, setArea] = useState('');
-  const [Iy, setIy] = useState('');
-  const [Iz, setIz] = useState('');
-  const [J, setJ] = useState('');
+  const elements = parameter(state => state.elements);
+  const setElements = parameter(state => state.setElements);
 
-  // clearInputs 함수는 유지하지만 호출하지 않음
-  const clearInputs = () => {
-    setNodeA('');
-    setNodeB('');
-    setMaterial('');
-    setArea('');
-    setIy('');
-    setIz('');
-    setJ('');
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
+  const handleElemIdChange = (e) => {
+    const val = e.target.value;
+    if (val === '') {
+      setElemId('');
+      return;
+    }
+    const num = Number(val);
+    if (!isNaN(num) && num >= 1 && Number.isInteger(num)) {
+      setElemId(num);
+    }
   };
 
   const handleApply = () => {
-    // 빈값 및 숫자 유효성 체크
-    if (
-      nodeA === '' || nodeB === '' || material.trim() === '' || area === '' ||
-      Iy === '' || Iz === '' || J === ''
-    ) {
-      alert('모든 항목을 입력해주세요.');
+    if (elemId === '' || elemId < 1) {
+      alert('Element ID는 1 이상의 자연수여야 합니다.');
       return;
     }
 
-    // 숫자 변환 후 NaN 체크
-    const nA = Number(nodeA);
-    const nB = Number(nodeB);
-    const a = Number(area);
-    const iy = Number(Iy);
-    const iz = Number(Iz);
-    const j = Number(J);
-
-    if ([nA, nB, a, iy, iz, j].some(num => isNaN(num))) {
-      alert('숫자 입력이 올바르지 않습니다.');
-      return;
+    const existingIndex = elements.findIndex(el => el.elem_id === elemId);
+    if (existingIndex !== -1) {
+      const newArr = [...elements];
+      newArr[existingIndex] = { elem_id: elemId, n1: node1, n2: node2, mat_id: matId };
+      setElements(newArr);
+    } else {
+      const newArr = [...elements, { elem_id: elemId, n1: node1, n2: node2, mat_id: matId }];
+      setElements(newArr);
     }
 
-    const newMember = {
-      MemberID: nextMemberId,
-      N1: nA,
-      N2: nB,
-      Mat: material.trim(),
-      Area: a,
-      Iy: iy,
-      Iz: iz,
-      J: j,
-    };
+    let nextId = elemId + 1;
+    const ids = new Set(elements.map(e => e.elem_id));
+    while (ids.has(nextId)) {
+      nextId += 1;
+    }
 
-    setMembers([...members, newMember]);
-    alert(`Member ${nextMemberId}가 저장되었습니다.`);
-
-    // 입력 유지 위해 clearInputs 호출 안 함
+    setElemId(nextId);
+    setNode1(0);
+    setNode2(0);
+    setMatId(0);
+    setSelectedIndex(null);
   };
 
-  const handleDelete = () => {
-    if (members.length === 0) {
-      alert('삭제할 멤버가 없습니다.');
-      return;
-    }
-    setMembers(members.slice(0, -1));
-    alert('마지막 멤버가 삭제되었습니다.');
+  const handleDelete = (index) => {
+    const newArr = elements.filter((_, idx) => idx !== index);
+    setElements(newArr);
+    setSelectedIndex(null);
   };
+
+  const handleRowClick = (index) => {
+    setSelectedIndex(index);
+    const elem = elements[index];
+    setElemId(elem.elem_id);
+    setNode1(elem.n1);
+    setNode2(elem.n2);
+    setMatId(elem.mat_id);
+  };
+
+  useEffect(() => {
+    const elem = elements.find(e => e.elem_id === elemId);
+    if (elem) {
+      setNode1(elem.n1);
+      setNode2(elem.n2);
+      setMatId(elem.mat_id);
+      setSelectedIndex(elements.indexOf(elem));
+    } else {
+      setNode1(0);
+      setNode2(0);
+      setMatId(0);
+      setSelectedIndex(null);
+    }
+  }, [elemId, elements]);
+
+  const sortedElements = [...elements].sort((a, b) => a.elem_id - b.elem_id);
 
   return (
     <div style={styles.container}>
       <div style={styles.topBar}>
-        <button style={styles.backBtn} onClick={onBack}>← Back</button>
+        <button onClick={onBack} style={styles.btn}>← Back</button>
+        <button style={styles.btn}>☰</button>
       </div>
 
-      <div style={styles.label}>Member ID (자동)</div>
+      <label style={styles.label}>Element ID (1 이상의 자연수)</label>
       <input
         type="number"
-        value={nextMemberId}
-        disabled
-        style={{ ...styles.input, backgroundColor: '#555' }}
-      />
-
-      <label style={styles.label}>N1 (Node A)</label>
-      <input
-        type="number"
-        value={nodeA}
-        onChange={e => setNodeA(e.target.value)}
+        value={elemId}
+        min="1"
+        onChange={handleElemIdChange}
         style={styles.input}
       />
 
-      <label style={styles.label}>N2 (Node B)</label>
+      <label style={styles.label}>Node1</label>
       <input
         type="number"
-        value={nodeB}
-        onChange={e => setNodeB(e.target.value)}
+        value={node1}
+        onChange={e => setNode1(Number(e.target.value))}
         style={styles.input}
       />
 
-      <label style={styles.label}>Mat# (재료 번호)</label>
+      <label style={styles.label}>Node2</label>
       <input
-        type="text"
-        value={material}
-        onChange={e => setMaterial(e.target.value)}
+        type="number"
+        value={node2}
+        onChange={e => setNode2(Number(e.target.value))}
         style={styles.input}
       />
 
-      <label style={styles.label}>Area (단면적)</label>
+      <label style={styles.label}>Material ID</label>
       <input
         type="number"
-        value={area}
-        onChange={e => setArea(e.target.value)}
-        style={styles.input}
-      />
-
-      <label style={styles.label}>Iy (단면 2차 모멘트 y방향)</label>
-      <input
-        type="number"
-        value={Iy}
-        onChange={e => setIy(e.target.value)}
-        style={styles.input}
-      />
-
-      <label style={styles.label}>Iz (단면 2차 모멘트 z방향)</label>
-      <input
-        type="number"
-        value={Iz}
-        onChange={e => setIz(e.target.value)}
-        style={styles.input}
-      />
-
-      <label style={styles.label}>J (단면 극관성 모멘트)</label>
-      <input
-        type="number"
-        value={J}
-        onChange={e => setJ(e.target.value)}
+        value={matId}
+        onChange={e => setMatId(Number(e.target.value))}
         style={styles.input}
       />
 
       <div style={styles.buttonRow}>
-        <button style={styles.deleteBtn} onClick={handleDelete}>Delete Last</button>
-        <button style={styles.applyBtn} onClick={handleApply}>Apply</button>
+        <button style={styles.btn}>Help</button>
+        <button style={styles.btn} onClick={handleApply}>
+          {selectedIndex !== null ? '수정' : '추가'}
+        </button>
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <strong>저장된 Members: {members.length} 개</strong>
+      <div style={styles.savedTable}>
+        <strong style={{ color: '#ccc' }}>zustand에 저장된 요소 (elements 배열):</strong>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>ID</th>
+              <th style={styles.th}>Node1</th>
+              <th style={styles.th}>Node2</th>
+              <th style={styles.th}>MatID</th>
+              <th style={styles.th}>삭제</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedElements.length > 0 ? (
+              sortedElements.map(({ elem_id, n1, n2, mat_id }, i) => {
+                const isExactSelected = elem_id === elemId;
+                return (
+                  <tr
+                    key={elem_id}
+                    style={{
+                      backgroundColor: isExactSelected ? '#475569' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => handleRowClick(elements.findIndex(e => e.elem_id === elem_id))}
+                    onMouseEnter={() => setHoveredIndex(i)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <td style={styles.td}>{elem_id}</td>
+                    <td style={styles.td}>{n1}</td>
+                    <td style={styles.td}>{n2}</td>
+                    <td style={styles.td}>{mat_id}</td>
+                    <td style={styles.td}>
+                      <button
+                        style={{
+                          ...styles.btn,
+                          backgroundColor: '#dc2626',
+                          padding: '4px 8px',
+                          fontSize: 12,
+                          visibility: hoveredIndex === i ? 'visible' : 'hidden',
+                        }}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDelete(elements.findIndex(el => el.elem_id === elem_id));
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: 12, color: '#777' }}>
+                  아직 저장된 요소가 없습니다.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
+const baseBtn = {
+  backgroundColor: '#64748b',
+  border: 'none',
+  padding: '8px 16px',
+  borderRadius: '4px',
+  color: '#fff',
+  cursor: 'pointer',
+};
+
 const styles = {
   container: {
-    backgroundColor: '#19232d',
-    color: 'white',
-    padding: 16,
-    fontFamily: 'Arial, sans-serif',
-    width: 320,
-    borderRadius: 8,
+    backgroundColor: '#000',
+    color: '#fff',
+    padding: 20,
+    fontFamily: 'Arial',
+    width: 300,
+    height: '100%',
     boxSizing: 'border-box',
   },
   topBar: {
     display: 'flex',
-    justifyContent: 'flex-start',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  backBtn: {
-    backgroundColor: '#444',
-    border: 'none',
-    borderRadius: 4,
-    padding: '6px 12px',
-    color: 'white',
-    cursor: 'pointer',
-  },
+  btn: baseBtn,
   label: {
-    fontWeight: 'bold',
     fontSize: 14,
-    marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 6,
+    display: 'block',
+  },
+  inputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   input: {
-    width: '100%',
-    padding: 6,
+    flexGrow: 1,
+    padding: 8,
     borderRadius: 4,
-    border: 'none',
-    marginBottom: 8,
-    boxSizing: 'border-box',
+    border: '1px solid #64748b',
+    backgroundColor: '#334155',
+    color: '#fff',
+  },
+  unit: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#94a3b8',
   },
   buttonRow: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginBottom: 20,
   },
-  deleteBtn: {
-    backgroundColor: '#b91c1c',
-    border: 'none',
-    borderRadius: 4,
-    color: 'white',
-    padding: '8px 16px',
-    cursor: 'pointer',
+  savedTable: {
+    marginTop: 10,
   },
-  applyBtn: {
-    backgroundColor: '#2563eb',
-    border: 'none',
-    borderRadius: 4,
-    color: 'white',
-    padding: '8px 16px',
-    cursor: 'pointer',
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  th: {
+    borderBottom: '2px solid #555',
+    padding: '8px 4px',
+    backgroundColor: '#1e293b',
+    fontSize: 13,
+    color: '#ccc',
+  },
+  td: {
+    borderBottom: '1px solid #333',
+    padding: '6px 4px',
+    fontSize: 13,
+    color: '#eee',
   },
 };
 
-export default MemberForm;
+export default Members;

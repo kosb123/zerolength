@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import MyElement3D from './MyElement3D';
 import NodeMenu from './Menu/NodeMenu';
 import MainMenu from './Menu/MainMenu';
-import MemberForm from './Menu/Members';
+import Members from './Menu/Members';
 
 function App() {
   const [activeMenu, setActiveMenu] = useState('Main');
@@ -26,9 +26,9 @@ function App() {
         {activeMenu === 'Nodes' && (
           <NodeMenu onBack={() => setActiveMenu('Main')} />
         )}
-        {/* {activeMenu === 'Members' && (
-          <MemberForm onBack={() => setActiveMenu('Main')} />
-        )} */}
+        {activeMenu === 'Members' && (
+          <Members onBack={() => setActiveMenu('Main')} />
+        )}
       </nav>
 
       <main id="canvas-container">
