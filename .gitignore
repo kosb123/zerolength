@@ -1,1 +1,3 @@
-node_modules
+# Ignore node modules and build output
+node_modules/
+dist/
