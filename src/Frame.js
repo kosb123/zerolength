@@ -10,11 +10,11 @@ const nodes = [
   { id: 5, x: 9,  y: 0,  z: 3 }
 ];
 
-const elements = [
-  { elem_id: 1, n1: 1, n2: 2, mat_id: 1 },
-  { elem_id: 2, n1: 2, n2: 3, mat_id: 1 },
-  { elem_id: 3, n1: 3, n2: 4, mat_id: 1 },
-  { elem_id: 4, n1: 4, n2: 5, mat_id: 1 }
+const members = [
+  { elem_id: 1, n1: 1, n2: 2, sec_id: 1 },
+  { elem_id: 2, n1: 2, n2: 3, sec_id: 1 },
+  { elem_id: 3, n1: 3, n2: 4, sec_id: 1 },
+  { elem_id: 4, n1: 4, n2: 5, sec_id: 1 }
 ];
 
 const materials = [
@@ -176,7 +176,7 @@ function getRotationMatrixFromVector(targetVector) {
 function ElemStiff(n) {
 
     // 요소 정보 저장
-  const element = elements.find(e => e.elem_id === n);
+  const element = members.find(e => e.elem_id === n);
   if (!element) {
     console.error(`Element ID ${n} not found!`);
     return null;
@@ -189,7 +189,7 @@ function ElemStiff(n) {
     return null;
   }
 
-  const material = materials.find(mat => mat.mat_id === element.mat_id);
+  const material = materials.find(mat => mat.mat_id === element.sec_id);
   if (!material) {
     console.error("Material not found!");
     return null;
@@ -238,7 +238,7 @@ function Stiffness() {
   // console.table(stiff);
 
   // 각 요소의 강성 행렬을 전체 강성 행렬에 추가
-  elements.forEach(element => {
+  members.forEach(element => {
     const elemStiff = ElemStiff(element.elem_id);
       const n1 = element.n1 - 1; // 0-based index
       const n2 = element.n2 - 1; // 0-based index

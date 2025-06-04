@@ -9,7 +9,7 @@ function MyElement3D() {
 
   // Zustand store에서 상태 읽기
   const nodes = parameter(state => state.nodes || []);
-  const elements = parameter(state => state.elements || []);
+  const members = parameter(state => state.members || []);
 
   // 노드ID별 좌표를 빠르게 찾기 위한 Map 생성
   const nodeMap = new Map();
@@ -49,7 +49,7 @@ function MyElement3D() {
       ))}
 
       {/* 멤버별 연결선 그리기 */}
-      {elements.map((elem, idx) => {
+      {members.map((elem, idx) => {
         const start = nodeMap.get(elem.n1);
         const end = nodeMap.get(elem.n2);
 
