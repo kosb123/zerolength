@@ -5,6 +5,7 @@ import MyElement3D from './MyElement3D';
 import NodeMenu from './Menu/NodeMenu';
 import MainMenu from './Menu/MainMenu';
 import Members from './Menu/Members';
+import SectionMenu from './Menu/SectionMenu';
 
 function App() {
   const [activeMenu, setActiveMenu] = useState('Main');
@@ -28,6 +29,9 @@ function App() {
         )}
         {activeMenu === 'Members' && (
           <Members onBack={() => setActiveMenu('Main')} />
+        )}
+        {activeMenu === 'Sections' && (
+          <SectionMenu onBack={() => setActiveMenu('Main')} />
         )}
       </nav>
 

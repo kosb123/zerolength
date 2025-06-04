@@ -5,10 +5,10 @@ function Members({ onBack }) {
   const [elemId, setElemId] = useState(1);
   const [node1, setNode1] = useState(0);
   const [node2, setNode2] = useState(0);
-  const [matId, setMatId] = useState(0);
+  const [secId, setSecId] = useState(0);
 
-  const elements = parameter(state => state.elements);
-  const setElements = parameter(state => state.setElements);
+  const members = parameter(state => state.members);
+  const setMembers = parameter(state => state.setMembers);
 
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -31,18 +31,18 @@ function Members({ onBack }) {
       return;
     }
 
-    const existingIndex = elements.findIndex(el => el.elem_id === elemId);
+    const existingIndex = members.findIndex(el => el.elem_id === elemId);
     if (existingIndex !== -1) {
-      const newArr = [...elements];
-      newArr[existingIndex] = { elem_id: elemId, n1: node1, n2: node2, mat_id: matId };
-      setElements(newArr);
+      const newArr = [...members];
+      newArr[existingIndex] = { elem_id: elemId, n1: node1, n2: node2, sec_id: secId };
+      setMembers(newArr);
     } else {
-      const newArr = [...elements, { elem_id: elemId, n1: node1, n2: node2, mat_id: matId }];
-      setElements(newArr);
+      const newArr = [...members, { elem_id: elemId, n1: node1, n2: node2, sec_id: secId }];
+      setMembers(newArr);
     }
 
     let nextId = elemId + 1;
-    const ids = new Set(elements.map(e => e.elem_id));
+    const ids = new Set(members.map(e => e.elem_id));
     while (ids.has(nextId)) {
       nextId += 1;
     }
@@ -50,41 +50,41 @@ function Members({ onBack }) {
     setElemId(nextId);
     setNode1(0);
     setNode2(0);
-    setMatId(0);
+    setSecId(0);
     setSelectedIndex(null);
   };
 
   const handleDelete = (index) => {
-    const newArr = elements.filter((_, idx) => idx !== index);
-    setElements(newArr);
+    const newArr = members.filter((_, idx) => idx !== index);
+    setMembers(newArr);
     setSelectedIndex(null);
   };
 
   const handleRowClick = (index) => {
     setSelectedIndex(index);
-    const elem = elements[index];
+    const elem = members[index];
     setElemId(elem.elem_id);
     setNode1(elem.n1);
     setNode2(elem.n2);
-    setMatId(elem.mat_id);
+    setSecId(elem.sec_id);
   };
 
   useEffect(() => {
-    const elem = elements.find(e => e.elem_id === elemId);
+    const elem = members.find(e => e.elem_id === elemId);
     if (elem) {
       setNode1(elem.n1);
       setNode2(elem.n2);
-      setMatId(elem.mat_id);
-      setSelectedIndex(elements.indexOf(elem));
+      setSecId(elem.sec_id);
+      setSelectedIndex(members.indexOf(elem));
     } else {
       setNode1(0);
       setNode2(0);
-      setMatId(0);
+      setSecId(0);
       setSelectedIndex(null);
     }
-  }, [elemId, elements]);
+  }, [elemId, members]);
 
-  const sortedElements = [...elements].sort((a, b) => a.elem_id - b.elem_id);
+  const sortedMembers = [...members].sort((a, b) => a.elem_id - b.elem_id);
 
   return (
     <div style={styles.container}>
@@ -118,11 +118,11 @@ function Members({ onBack }) {
         style={styles.input}
       />
 
-      <label style={styles.label}>Material ID</label>
+      <label style={styles.label}>Section ID</label>
       <input
         type="number"
-        value={matId}
-        onChange={e => setMatId(Number(e.target.value))}
+        value={secId}
+        onChange={e => setSecId(Number(e.target.value))}
         style={styles.input}
       />
 
@@ -134,20 +134,20 @@ function Members({ onBack }) {
       </div>
 
       <div style={styles.savedTable}>
-        <strong style={{ color: '#ccc' }}>zustand에 저장된 요소 (elements 배열):</strong>
+        <strong style={{ color: '#ccc' }}>zustand에 저장된 요소 (members 배열):</strong>
         <table style={styles.table}>
           <thead>
             <tr>
               <th style={styles.th}>ID</th>
               <th style={styles.th}>Node1</th>
               <th style={styles.th}>Node2</th>
-              <th style={styles.th}>MatID</th>
+              <th style={styles.th}>SecID</th>
               <th style={styles.th}>삭제</th>
             </tr>
           </thead>
           <tbody>
-            {sortedElements.length > 0 ? (
-              sortedElements.map(({ elem_id, n1, n2, mat_id }, i) => {
+            {sortedMembers.length > 0 ? (
+              sortedMembers.map(({ elem_id, n1, n2, sec_id }, i) => {
                 const isExactSelected = elem_id === elemId;
                 return (
                   <tr
@@ -156,14 +156,14 @@ function Members({ onBack }) {
                       backgroundColor: isExactSelected ? '#475569' : 'transparent',
                       cursor: 'pointer',
                     }}
-                    onClick={() => handleRowClick(elements.findIndex(e => e.elem_id === elem_id))}
+                    onClick={() => handleRowClick(members.findIndex(e => e.elem_id === elem_id))}
                     onMouseEnter={() => setHoveredIndex(i)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   >
                     <td style={styles.td}>{elem_id}</td>
                     <td style={styles.td}>{n1}</td>
                     <td style={styles.td}>{n2}</td>
-                    <td style={styles.td}>{mat_id}</td>
+                    <td style={styles.td}>{sec_id}</td>
                     <td style={styles.td}>
                       <button
                         style={{
@@ -175,7 +175,7 @@ function Members({ onBack }) {
                         }}
                         onClick={e => {
                           e.stopPropagation();
-                          handleDelete(elements.findIndex(el => el.elem_id === elem_id));
+                          handleDelete(members.findIndex(el => el.elem_id === elem_id));
                         }}
                       >
                         삭제
