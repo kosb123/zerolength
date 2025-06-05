@@ -1,0 +1,355 @@
+<HTML>
+<HEAD>
+<TITLE>One Dimensional Bar</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----   Program FEM1D    -----
+//    Chandrupatla & Belegundu
+//------------------------------
+var Dummy, Dummy1, title
+var nn,ne,nm,ndim,nen,ndn,nd,nl,nmpc,cnst,nbw,nq,npr=2
+var x = new Array()
+var noc = new Array()
+var f = new Array()
+var area = new Array()
+var mat = new Array()
+var dt = new Array()
+var pm = new Array()
+var nu = new Array()
+var u = new Array()
+var mpc = new Array()
+var bt = new Array()
+var s = new Array()
+var stress = new Array()
+var react = new Array()
+var stiff = new Array()
+
+function Fem1d(){
+InputData()
+Bandwidth()
+Stiffness()
+ModifyForBC()
+BandSolver()
+StressCalc()
+ReactionCalc()
+Output()
+}//Fem1d
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read NN,NE,... --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nn = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nm = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndim = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nen = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndn = parseInt(Dummy1)
+nq = nn*ndn
+for(i = 0; i < nq; i++){
+  f[i] = 0
+  }
+/* ---  Read ND,NL,... --- */
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nd = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nl = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nmpc = parseInt(Dummy1)
+/* ---  Read coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   x[n] = parseFloat(Dummy1)
+}
+/* ---  Read connectivity etc --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   noc[n] = new Array(nen)
+   for(j = 0; j < nen; j++){
+   noc[n][j] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   }
+   mat[n] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   area[n] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   dt[n] = parseFloat(Dummy1)
+}
+/* ---  Read Specified Displacements --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nd; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nu[i] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   u[i] = parseFloat(Dummy1)
+}
+/* ---  Read Component Loads --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nl; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   f[n] = parseFloat(Dummy1)
+}
+/* ---  Read Material Properties --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nm; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   pm[n] = new Array(npr)
+   Dummy1=tknRemoved(Dummy1)
+   pm[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   pm[n][1] = parseFloat(Dummy1)
+}
+/* ---  Read Multi-point Constraints --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nmpc; i++){
+   bt[i] = new Array(3)
+   mpc[i] = new Array(2)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   bt[i][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][0] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][1] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][1] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][2] = parseFloat(Dummy1)
+}
+}//InputData
+
+function Bandwidth() {
+     /* ----- Bandwidth Evaluation ----- */
+     nbw = 0
+     for (n = 0; n < ne; n++){
+        nabs = Math.abs(noc[n][0] - noc[n][1]) + 1
+        if (nbw < nabs){nbw = nabs}
+     }
+     for (i = 0; i < nmpc; i++){     
+        nabs = Math.abs(mpc[i][0] - mpc[i][1]) + 1
+        if (nbw < nabs){nbw = nabs}
+     }
+}//Bandwidth
+
+function Stiffness() {
+/* ----- assemble the stiffness matrix ----- */
+   for (i = 0; i < nq; i++){
+       stiff[i] = new Array(nbw)
+       for (j = 0; j < nbw; j++){
+          stiff[i][j] = 0
+       }
+   }
+   for (i = 0; i < ne; i++) {
+      i1 = noc[i][0]
+      i2 = noc[i][1]
+      m1 = mat[i]
+      x21 = x[i2-1] - x[i1-1]
+      eal = pm[m1-1][0] * area[i] / Math.abs(x21)
+      c = 0
+      if (npr > 1) {c = pm[m1-1][1]}
+      tld = eal*c*dt[i]*x21
+      stiff[i1-1][0] = stiff[i1-1][0] + eal
+      stiff[i2-1][0] = stiff[i2-1][0] + eal
+      n = i1
+      if (i2 < i1){n = i2}
+      m = Math.abs(i2-i1)
+      stiff[n-1][m] = stiff[n-1][m] - eal;
+   /* --- temperature forces --- */
+      f[i1-1] = f[i1-1] - tld;
+      f[i2-1] = f[i2-1] + tld;
+   }
+}//Stiffness
+
+function ModifyForBC(){
+/* ----- decide penalty parameter cnst ----- */
+   cnst = 0
+   for (i = 0;i < nq; i++){
+       if (cnst < stiff[i][0]){cnst = stiff[i][0]}
+       }
+   cnst = 10000 * cnst
+/* ----- modify for displacement boundary conditions ----- */
+   for (i = 0; i < nd; i++) {
+      k = nu[i]
+      stiff[k-1][0] = stiff[k-1][0] + cnst
+      f[k-1] = f[k-1] + cnst * u[i]
+   }
+/* ----- modify for multipoint constraints ----- */
+   for (i = 0; i < nmpc; i++){
+       i1 = mpc[i][0]
+       i2 = mpc[i][1]
+       stiff[i1-1][0] = stiff[i1-1][0] + cnst*bt[i][0]*bt[i][0]
+       stiff[i2-1][0] = stiff[i2-1][0] + cnst*bt[i][1]*bt[i][1]
+       n=i1
+       if (n > i2){n = i2}
+       m = Math.abs(i2-i1)
+       stiff[n-1][m] = stiff[n-1][m]+cnst*bt[i][0]*bt[i][1]
+       f[i1-1] = f[i1-1] + cnst*bt[i][0]*bt[i][2]
+       f[i2-1] = f[i2-1] + cnst*bt[i][1]*bt[i][2]
+       }
+}//ModifyForBC
+
+function BandSolver(){
+  /* ----- band solver ----- */
+  n1 = nq - 1
+  /* --- forward elimination --- */
+  for (k = 1; k <= n1; k++) {
+     nk = nq - k + 1
+     if (nk > nbw) {nk = nbw}
+     for (i = 2; i <= nk; i++) {
+       c1 = stiff[k-1][i-1] / stiff[k-1][0]
+       i1 = k + i - 1
+       for (j = i; j <= nk; j++) {
+	j1 = j - i + 1;
+	stiff[i1-1][j1-1] = stiff[i1-1][j1-1] - c1 * stiff[k-1][j-1]
+	}
+       f[i1-1] = f[i1-1] - c1 * f[k-1]
+       }
+     }
+  /* --- back-substitution --- */
+  f[nq-1] = f[nq-1] / stiff[nq-1][0]
+  for (kk = 1; kk <= n1;kk++) {
+     k = nq - kk
+     c1 = 1 / stiff[k-1][0]
+     f[k-1] = c1 * f[k-1]
+     nk = nq - k + 1
+     if (nk > nbw){nk = nbw}
+       for (j = 2; j <= nk; j++) {
+	 f[k-1] = f[k-1] - c1 * stiff[k-1][j-1] * f[k + j - 2]
+	}
+     }
+}//BandSolver
+
+function StressCalc(){
+     /*----- Stress Calculation ----- */
+     for (n = 0; n < ne; n++){
+        n1 = noc[n][0]
+        n2 = noc[n][1]
+        n3 = mat[n]
+        eps = (f[n2-1] - f[n1-1]) / (x[n2-1] - x[n1-1])
+        stress[n] = pm[n3-1][0] * (eps - pm[n3-1][1] * dt[n])
+     }
+}//StressCalc()
+
+function ReactionCalc(){
+     /* ----- Reaction Calculation ----- */
+     for (i = 0; i < nd; i++){
+        n = nu[i]
+        react[i] = cnst * (u[i] - f[n-1])
+     }
+}//ReactionCalc()
+
+function Output(){
+Dummy = title+'\n'
+Dummy=Dummy +'Node# Displ.' +'\n'
+for (i = 0; i < nq; i++){
+  ii = i + 1
+  Dummy = Dummy +'  '+ ii + '   ' + f[i].toExponential(4) + '\n'
+}
+Dummy=Dummy +'Elem# Stress' +'\n'
+for (i = 0; i < ne; i++){
+  ii = i + 1
+  Dummy = Dummy  +'  '+ ii + '   ' + stress[i].toExponential(4) + '\n'
+}
+Dummy=Dummy +'DOF#  ReactionForce' +'\n'
+for (i = 0; i < nd; i++){
+  Dummy = Dummy +'  ' + nu[i] + '   ' + react[i].toExponential(4) + '\n'
+}
+
+document.form.output.value = Dummy
+
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Finite Element Analysis - 1D Bar Problems</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Fem1d(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+Next line is problem title      << 1D BAR ANALYSIS >>
+EXAMPLE 3.3
+NN NE NM NDIM NEN NDN
+ 3  2  1   1   2   1
+ND NL  NMPC
+ 1  3   0
+Node#   X-Coordinate
+ 1      0
+ 2     12
+ 3     24
+Elem#  N1  N2  Mat#  Area TempRise 
+ 1     1   2    1    5.25   0
+ 2     2   3    1    3.75   0
+DOF#  Displacement
+ 1     0
+DOF#  Load
+ 1    8.9334
+ 2  115.3144
+ 3    6.3810
+MAT#  E   Alpha
+ 1   30e6  0
+B1  i  B2 j  B3  (Multi-point constr. B1*Qi+B2*Qj=B3)
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

@@ -1,0 +1,20 @@
+HEAT1D DATA FILE
+EXAMPLE 10.1
+NE   #BOUNDARY CONDITIONS (B.C.'S)   #NODAL HEAT SOURCES
+ 3       2                              0
+ELEM#   THERMAL CONDUCTIVITY
+ 1       20.
+ 2       30.
+ 3       50.
+NODE COORDINATE
+ 1       0
+ 2      .3
+ 3      .45
+ 4      .6
+NODE  BC-TYPE followed by T0(if TEMP) or q0(if FLUX) or H and Tinf(if CONV)
+1    CONV
+  25   800
+4    TEMP
+20
+NODE    HEAT SOURCE
+

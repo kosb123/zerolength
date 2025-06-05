@@ -1,0 +1,575 @@
+<HTML>
+<HEAD>
+<TITLE>Mesh Generation</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----            Program MESHGEN           -----
+//---   CST/QUAD Mesh Generation 2D Problems   ---
+//            Chandrupatla & Belegundu
+//------------------------------------------------
+var Dummy, Dummy1, Dummy2 = '', title
+var ns, nw, nsj, nsr, nwr, nns, nnw, nnt, ngn, node
+var nn, ne, nm, nen
+var x = new Array()
+var xb = new Array()
+var xp = new Array()
+var noc = new Array()
+var mat = new Array()
+var merg = new Array()
+var nnar = new Array()
+var idblk = new Array()
+var nsd = new Array()
+var nwd = new Array()
+var ngcn = new Array()
+var sr = new Array()
+var wr = new Array()
+var sh = new Array()
+
+function MeshGen(){
+   InputData()
+   GlobalNode()
+   CoordConnect()
+   Output()
+}//MeshGen
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read DATA --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nen = parseInt(Dummy1)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+ns = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nw = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nsj = parseInt(token(Dummy1))
+nsw = ns * nw
+ngn = (ns + 1) * (nw + 1)
+nm = 1
+
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+//------------- Span Divisions ---------------
+   nns = 1
+   nnw = 1
+//--- Number of Divisions for each S-span
+   for (ks = 1; ks <= ns; ks++) {
+      Dummy1 = nxtLine(Dummy)
+      Dummy = lineRemoved(Dummy)
+      n = parseInt(token(Dummy1))
+      Dummy1 = tknRemoved(Dummy1)
+      nsd[n] = parseInt(token(Dummy1))
+      nns = nns + nsd[n]
+   }
+Dummy = lineRemoved(Dummy)
+//--- Number of Divisions for each W-span
+   for (kw = 1; kw <= nw; kw++) {
+      Dummy1 = nxtLine(Dummy)
+      Dummy = lineRemoved(Dummy)
+      n = parseInt(token(Dummy1))
+      Dummy1 = tknRemoved(Dummy1)
+      nwd[n] = parseInt(token(Dummy1))
+      nnw = nnw + nwd[n]
+   }
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+//--- block material data
+//-------- block identifier / material# (default# is 1) --------
+     for (i = 1; i <= nsw; i++) {
+        idblk[i] = 1
+     }
+     do {
+        Dummy1 = nxtLine(Dummy)
+        Dummy = lineRemoved(Dummy)    
+        ntmp = parseInt(token(Dummy1))
+        if (ntmp > 0) {
+           Dummy1 = tknRemoved(Dummy1)
+           idblk[ntmp] = parseInt(token(Dummy1))
+           if (nm < idblk[ntmp]) {nm = idblk[ntmp]}
+        }
+     } while (ntmp > 0)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+     nsr = ns * (nw + 1)
+     nwr = nw * (ns + 1)
+     for(i = 1; i <= ngn; i++) {
+         xb[i] = new Array(2)
+         xb[i][0] = 0
+         xb[i][1] = 0
+     }
+     for(i = 1; i <= nsr; i++) {
+         sr[i] = new Array(2)
+         sr[i][0] = 0
+         sr[i][1] = 0
+     }
+     for(i = 1; i <= nwr; i++) {
+         wr[i] = new Array(2)
+         wr[i][0] = 0
+         wr[i][1] = 0
+     }
+//-----------------   block corner data  ---------------
+     do {
+        Dummy1 = nxtLine(Dummy)
+        Dummy = lineRemoved(Dummy)    
+        ntmp = parseInt(token(Dummy1))
+        if (ntmp > 0) {
+           xb[ntmp] = new Array(2)
+           Dummy1 = tknRemoved(Dummy1)
+           xb[ntmp][0] = parseFloat(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)
+           xb[ntmp][1] = parseFloat(token(Dummy1))
+        }
+     } while (ntmp > 0)
+//---------- evaluate mid-points of s-sides -------------
+     for (i = 1; i <= nw + 1; i++) {
+        for (j = 1; j <= ns; j++) {
+           ij = (i - 1) * ns + j
+           sr[ij][0] = 0.5 * (xb[ij + i - 1][0] + xb[ij + i][0])
+           sr[ij][1] = 0.5 * (xb[ij + i - 1][1] + xb[ij + i][1])
+        }
+     }
+//---------- evaluate mid-points of w-sides -------------
+     for (i = 1; i <= nw; i++) {
+        for (j = 1; j <= ns + 1; j++) {
+           ij = (i - 1) * (ns + 1) + j
+           wr[ij][0] = 0.5 * (xb[ij][0] + xb[ij + ns + 1][0])
+           wr[ij][1] = 0.5 * (xb[ij][1] + xb[ij + ns + 1][1])
+        }
+     }
+
+//------ mid points for sides that are curved or graded ------
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+//--- s-sides
+     do {
+        Dummy1 = nxtLine(Dummy)
+        Dummy = lineRemoved(Dummy)    
+        ntmp = parseInt(token(Dummy1))
+        if (ntmp > 0) {
+           Dummy1 = tknRemoved(Dummy1)
+           sr[ntmp][0] = parseFloat(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)
+           sr[ntmp][1] = parseFloat(token(Dummy1))
+        }
+     }while(ntmp > 0)
+Dummy = lineRemoved(Dummy)
+//--- w-sides
+     do {
+        Dummy1 = nxtLine(Dummy)
+        Dummy = lineRemoved(Dummy)    
+        ntmp = parseInt(token(Dummy1))
+        if (ntmp > 0) {
+           Dummy1 = tknRemoved(Dummy1)
+           wr[ntmp][0] = parseFloat(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)
+           wr[ntmp][1] = parseFloat(token(Dummy1))
+        }      
+     }while(ntmp > 0)
+//--------- merging sides ----------
+     if (nsj > 0) {
+        Dummy = lineRemoved(Dummy)
+        Dummy = lineRemoved(Dummy)
+        for (nn = 1; nn <= nsj; nn++) {
+           Dummy1 = nxtLine(Dummy)
+           Dummy = lineRemoved(Dummy)                       
+           n = parseInt(token(Dummy1))
+           merg[n] = new Array(4)
+           Dummy1 = tknRemoved(Dummy1)
+           l1 = parseInt(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)
+           l2 = parseInt(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)           
+           idiv1 = SideDiv(l1, l2)
+           l3 = parseInt(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)
+           l4 = parseInt(token(Dummy1))
+           Dummy1 = tknRemoved(Dummy1)
+           idiv2 = SideDiv(l3, l4)
+           if (idiv1 != idiv2) {
+              Dummy2 = '#div do not match. check merge data.\n'
+              break
+           }
+           merg[n][0] = l1
+           merg[n][1] = l2
+           merg[n][2] = l3
+           merg[n][3] = l4
+        }
+     }
+
+}//InputData
+
+function GlobalNode() {
+     //------- global node locations of corner nodes ---------
+     ntmpi = 1
+     for (i = 1; i <= nw + 1; i++) {
+        if (i == 1) {iinc = 0} else {iinc = nns * nwd[i - 1]}
+        ntmpi = ntmpi + iinc
+        ntmpj = 0
+        for (j = 1; j <= ns + 1; j++) {
+           ij = (ns + 1) * (i - 1) + j
+           if (j == 1) {jinc = 0} else {jinc = nsd[j - 1]}
+           ntmpj = ntmpj + jinc
+           ngcn[ij] = ntmpi + ntmpj
+        }
+     }
+     //---------------- node point array --------------------
+     nnt = nns * nnw
+     for (i = 1; i <= nnt; i++) {
+        nnar[i] = -1
+     }
+
+     //--------- zero non-existing node locations ---------
+     for (kw = 1; kw <= nw; kw++) {
+        for (ks = 1; ks <= ns; ks++) {
+           ksw = ns * (kw - 1) + ks
+           if (idblk[ksw] <= 0) {
+              //-------- operation within an empty block --------
+              k1 = (kw - 1) * (ns + 1) + ks
+              n1 = ngcn[k1]
+              ns1 = 2
+              if (ks == 1) {ns1 = 1}
+              nw1 = 2
+              if (kw == 1) {nw1 = 1}
+              ns2 = nsd[ks] + 1
+              if (ks < ns) {
+                 if (idblk[ksw + 1] > 0) {ns2 = nsd[ks]}
+              }
+              nw2 = nwd[kw] + 1
+              if (kw < nw) {
+                 if (idblk[ksw + ns] > 0) {nw2 = nwd[kw]}
+              }
+              for (i = nw1; i <= nw2; i++) {
+                 in1 = n1 + (i - 1) * nns
+                 for (j = ns1; j <= ns2; j++) {
+                    ij = in1 + j - 1
+                    nnar[ij] = 0
+                 }
+              }
+              ict = 0
+              if (ns2 == nsd[ks] || nw2 == nwd[kw]) {ict = 1}
+              if (ks == ns || kw == nw) {ict = 1}
+              if (ict == 0) {
+                 if (idblk[ksw + ns + 1] > 0) {nnar[ij] = -1}
+              }
+           }
+        }
+     }
+     //--------  node identification for side merging ------
+     if (nsj > 0) {
+        for (n = 1; n <= nsj; n++) {
+           i1 = merg[n][0]
+           i2 = merg[n][1]
+           idiv = SideDiv(i1, i2)
+           ia1 = ngcn[i1]
+           ia2 = ngcn[i2]
+           iastp = (ia2 - ia1) / idiv
+           i1 = merg[n][2]
+           i2 = merg[n][3]
+           idiv = SideDiv(i1, i2)
+           ib1 = ngcn[i1]
+           ib2 = ngcn[i2]
+           ibstp = (ib2 - ib1) / idiv
+           iaa = ia1 - iastp
+           for (ibb = ib1; ibb <= ib2; ibb += ibstp) {
+              iaa = iaa + iastp
+              if (ibb == iaa) {nnar[iaa] = -1} else {nnar[ibb] = iaa}
+           }
+        }
+     }
+     //----------  final node numbers in the array  --------
+     node = 0
+     for (i = 1; i <= nnt; i++) {
+        if (nnar[i] > 0) {
+           ii = nnar[i]
+           nnar[i] = nnar[ii]
+        }else if (nnar[i] < 0) {
+           node = node + 1
+           nnar[i] = node
+        }
+     }
+} //GlobalNode
+
+function SideDiv(i1, i2) {
+   //===========  number of divisions  for side i1,i2  ===========
+     imin = i1
+     imax = i2
+     if (imin > i2) {
+        imin = i2
+        imax = i1
+     }
+     idiv = 0
+  if (imax - imin == 1) {
+     for (j = 1; j <= nw + 1; j++) {
+        for (i = 1; i <= ns; i++) {
+           jj = (j - 1) * (ns + 1)
+           if (jj + i == imin) {
+              idiv = nsd[i]
+              break
+           }
+        }
+        if (idiv > 0) {break}
+      }
+   }else{
+     for (j = 1; j <= nw; j++) {
+        for (i = 1; i <= ns + 1; i++) {
+           jj = (j - 1) * (ns + 1)
+           if (jj + i == imin) {
+              idiv = nwd[j]
+              break
+            }
+        }
+        if (idiv > 0) {break}
+     }
+   }
+   return idiv
+}//SideDiv
+
+function CoordConnect() {
+     //------------  nodal coordinates  ---------------
+     nn = node
+     nelm = 0
+    //Initialization of nodal and other arrays
+     for (i = 1; i <= nn; i++) {
+         x[i] = new Array(2)
+         if(i < 9) {
+            xp[i] = new Array(2)
+         }
+     }
+     for (i = 1; i <= 2*nnt; i++) {
+        noc[i] = new Array(nen)
+        mat[i] = 1
+     }
+
+     for (kw = 1; kw <= nw; kw++) {
+        for (ks = 1; ks <= ns; ks++) {
+        ksw = ns * (kw - 1) + ks
+        if (idblk[ksw] != 0) {
+           //---------  extraction of block data  ----------
+           nodw = ngcn[ksw + kw - 1] - nns - 1
+           for (jw = 1; jw <= nwd[kw] + 1; jw++) {
+              eta = -1 + 2 * (jw - 1) / nwd[kw]
+              nodw = nodw + nns
+              nods = nodw
+              for (js = 1; js <= nsd[ks] + 1; js++) {
+                 xi = -1 + 2 * (js - 1) / nsd[ks]
+                 nods = nods + 1
+                 node = nnar[nods]
+                 BlockXY(kw, ksw)
+                 Shape(xi, eta)
+                 for (j = 0; j < 2; j++) {
+                    c1 = 0
+                    for (i = 1; i <= 8; i++) {
+                       c1 = c1 + sh[i] * xp[i][j]
+                    }
+                    x[node][j] = c1
+                 }
+                 //-----------------  connectivity  ----------------
+                 if (js != nsd[ks] + 1 && jw != nwd[kw] + 1) {
+                    n1 = node
+                    n2 = nnar[nods + 1]
+                    n4 = nnar[nods + nns]
+                    n3 = nnar[nods + nns + 1]
+                    nelm = nelm + 1
+                    if (nen == 3) {
+                       //------------- triangular elements ------------
+                       noc[nelm][0] = n1
+                       noc[nelm][1] = n2
+                       noc[nelm][2] = n3
+                       mat[nelm] = idblk[ksw]
+                       nelm = nelm + 1
+                       noc[nelm][0] = n3
+                       noc[nelm][1] = n4
+                       noc[nelm][2] = n1
+                       mat[nelm] = idblk[ksw]
+                    }else{
+                       //------------- quadrilateral elements ----------
+                       noc[nelm][0] = n1
+                       noc[nelm][1] = n2
+                       mat[nelm] = idblk[ksw]
+                       noc[nelm][2] = n3
+                       noc[nelm][3] = n4
+                    }
+                 }
+              }
+           }
+        }
+     }
+   }
+     ne = nelm
+     if (nen == 3) {
+     //--------- readjustment for triangle connectivity ----------
+        ne2 = ne / 2
+        for (i = 1; i <= ne2; i++) {
+           i1 = 2 * i - 1
+           n1 = noc[i1][0]
+           n2 = noc[i1][1]
+           n3 = noc[i1][2]
+           n4 = noc[2 * i][1]
+           x13 = x[n1][0] - x[n3][0]
+           y13 = x[n1][1] - x[n3][1]
+           x24 = x[n2][0] - x[n4][0]
+           y24 = x[n2][1] - x[n4][1]
+           if ((x13 * x13 + y13 * y13) > 1.1 * (x24 * x24 + y24 * y24)) {
+              noc[i1][2] = n4
+              noc[2 * i][2] = n2
+           }
+        }
+     }
+} //CoordConnect
+
+function BlockXY(kw, ksw) {
+     //======  coordinates of 8-nodes of the block  ======
+     n1 = ksw + kw - 1
+     xp[1][0] = xb[n1][0]
+     xp[1][1] = xb[n1][1]
+     xp[3][0] = xb[n1 + 1][0]
+     xp[3][1] = xb[n1 + 1][1]
+     xp[5][0] = xb[n1 + ns + 2][0]
+     xp[5][1] = xb[n1 + ns + 2][1]
+     xp[7][0] = xb[n1 + ns + 1][0]
+     xp[7][1] = xb[n1 + ns + 1][1]
+     xp[2][0] = sr[ksw][0]
+     xp[2][1] = sr[ksw][1]
+     xp[6][0] = sr[ksw + ns][0]
+     xp[6][1] = sr[ksw + ns][1]
+     xp[8][0] = wr[n1][0]
+     xp[8][1] = wr[n1][1]
+     xp[4][0] = wr[n1 + 1][0]
+     xp[4][1] = wr[n1 + 1][1]
+} //BlockXY
+
+function Shape(xi, eta) {
+     //==============  shape functions  ================
+     sh[1] = -(1 - xi) * (1 - eta) * (1 + xi + eta) / 4
+     sh[2] = (1 - xi * xi) * (1 - eta) / 2
+     sh[3] = -(1 + xi) * (1 - eta) * (1 - xi + eta) / 4
+     sh[4] = (1 - eta * eta) * (1 + xi) / 2
+     sh[5] = -(1 + xi) * (1 + eta) * (1 - xi - eta) / 4
+     sh[6] = (1 - xi * xi) * (1 + eta) / 2
+     sh[7] = -(1 - xi) * (1 + eta) * (1 + xi - eta) / 4
+     sh[8] = (1 - eta * eta) * (1 - xi) / 2
+} //Shape
+
+
+function Output(){
+Dummy = title+'\n'
+Dummy = Dummy +'nn  ne  nm  ndim  nen  ndn' + '\n'
+  ndim = 2
+  ndn = 2
+Dummy = Dummy + nn + ' ' + ne + ' ' + nm + ' ' + ndim + ' ' + nen + ' ' + ndn + '\n'
+Dummy = Dummy + 'nd  nl  nmpc' + '\n'
+Dummy = Dummy + '0 0 0\n'
+Dummy = Dummy + 'Node#  x-coord  y- coord\n'
+for (i = 1; i <= nn; i++) {
+   Dummy = Dummy + x[i][0] + '  ' + x[i][1] +'\n'
+}
+Dummy = Dummy + 'elem#  node1  node2  node3'
+if(nen > 3) {Dummy = Dummy + '  node4'}
+Dummy = Dummy + '  mat#  thickness  tempRise  <= edit mat#, thickness, temprise\n'
+for (n = 1; n <= ne; n++) {
+   Dummy = Dummy + n + '  '
+   for ( i = 0; i < nen; i++) {
+      Dummy = Dummy + noc[n][i] + '  '
+   }
+   Dummy = Dummy + mat[n] + '   1    0\n'
+}
+Dummy = Dummy + 'dof#   displ.\n'
+Dummy = Dummy + 'dof#   load\n'
+Dummy = Dummy + 'mat#  E   nu   alpha    <= Material# and properties\n'
+Dummy = Dummy + 'b1  i  b2  j  b3  <= multipoint constr. b1*qi+b2*qj = b3\n'
+document.form.output.value = Dummy + Dummy2
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii)+' ')
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>FEA - CST/QUAD Mesh Generation 2D Stress Analysis</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "MeshGen(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<<MESH GENERATION CST/QUAD >> Next line is problem title
+Example 11.1
+Number of Nodes per Element <3 or 4>
+  3
+BLOCK DATA 
+#S-Spans(NS)  #W-Spans(NW)  #PairsOfEdgesMergedNSJ)
+  2             2             1
+SPAN DATA
+S-Span#  Num-Divisions  (for each S-Span/ Single division = 1)
+  1        2
+  2        2
+W-Span#  Num-Divisions  (for each W-Span/ Single division = 1)
+  1        3
+  2        2
+BLOCK MATERIAL DATA (for Material Number other than 1)
+Block#   Material  (Void => 0   Block# = 0 completes this data)
+  4        0
+  0
+BLOCK CORNER DATA
+Corner#  X-Coord   Y-Coord (Corner# = 0 completes this data)
+  1      0         0
+  2      2.5       0
+  3      5         0
+  4      0         2.5
+  5      1.8       1.8
+  6      3.536     3.536
+  7      0         5
+  8      3.536     3.536
+  0
+MID POINT DATA FOR CURVED OR GRADED SIDES
+S-Side#  X-Coord   Y-Coord (Side# = 0 completes this data)
+  5      1.913     4.619
+  0
+W-Side#  X-Coord   Y-Coord (Side# = 0 completes this data)
+  3      4.619     1.913
+  0
+MERGING SIDES (Node1 is the lower number)
+Pair#  Side1Node1  Side1Node2   Side2Node1  Side2node2
+  1      5           6            5           8
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

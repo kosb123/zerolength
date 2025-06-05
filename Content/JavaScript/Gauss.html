@@ -1,0 +1,123 @@
+<HTML>
+<HEAD>
+<TITLE>Equation Solver</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+
+function Gauss(){
+var Dummy, Dummy1, n
+var a = new Array()
+var b = new Array()
+
+Input()
+Solve()
+Dummy = ''
+ for (i = 0; i < n; i++) {
+    Dummy = Dummy + (i+1) + "  " + b[i].toExponential(4) + '\n'   
+ }
+document.form.output.value = Dummy
+
+function Input(){
+Dummy = document.form.input.value
+Dummy = lineRemoved(Dummy) 
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)  //N
+Dummy = lineRemoved(Dummy)
+n = parseInt(Dummy1)
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < n; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   a[i] = new Array(n)  
+   for (j = 0;j < n-1;j++){
+      a[i][j] = parseFloat(token(Dummy1))
+      Dummy1 = tknRemoved(Dummy1)
+   } 
+   a[i][n-1] = parseFloat(Dummy1)
+}
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+for (j = 0;j < n-1;j++){
+   b[j] = parseFloat(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+} 
+   b[n-1]= parseFloat(Dummy1)
+}//Input
+
+function Solve(){
+//----- forward elimination -----
+ for (k = 0; k < n - 1; k++) {
+   for (i = k + 1 ; i < n; i++) {
+      c = a[i][k] / a[k][k]
+      for (j = k + 1; j < n; j++) {
+	 a[i][j] = a[i][j] - c * a[k][j]
+      }
+      b[i] = b[i] - c * b[k]
+   }
+ }
+//----- backsubstitution -----
+     b[n-1] = b[n-1] / a[n-1][n-1]
+     for (i = n - 2; i >= 0; i--) {
+	 c = 1 / a[i][i];
+	 b[i] = c * b[i];
+	 for (k = i + 1; k < n; k++) {
+	     b[i] = b[i] - c * a[i][k] * b[k];
+	     }
+	 }
+}//Solve
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return str.substring(0,ii)
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+}//Gauss 
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Gauss Elimination for Equation Solving</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Gauss(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>//Gauss Elimination Method
+Number of Equations
+8
+Matrix A() in Ax = B
+6 0 1 2 0 0 2 1
+0 5 1 1 0 0 3 0
+1 1 6 1 2 0 1 2
+2 1 1 7 1 2 1 1
+0 0 2 1 6 0 2 1
+0 0 0 2 0 4 1 0
+2 3 1 1 2 1 5 1
+1 0 2 1 1 0 1 3
+Right hand side B() in Ax = B
+1 1 1 1 1 1 1 1
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+(c) T.R.Chandrupatla & A.D.Belegundu
+</BODY>
+</HTML>

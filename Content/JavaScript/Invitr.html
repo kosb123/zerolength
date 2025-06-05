@@ -1,0 +1,340 @@
+<HTML>
+<HEAD>
+<TITLE>Inverse Interation for Eigenvalues</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//*****       PROGRAM INVITR        *****
+//*      Inverse Iteration Method       *
+//*  for Eigenvalues and Eigenvectors   *
+//*        Searching in Subspace        *
+//*         for Banded Matrices         *
+//* T.R.Chandrupatla and A.D.Belegundu  *
+//***************************************
+var Dummy, Dummy1, title
+var Dummy2 = ''
+var nq, nbw
+var tol, sh, sh1, nev, nev1, itmax
+
+var s = new Array()
+var gm = new Array()
+var ev1 = new Array()
+var ev2 = new Array()
+var evc = new Array()
+var evl = new Array()
+var evt = new Array()
+var evs = new Array()
+var st = new Array()
+var niter = new Array()
+
+function Invitr(){
+   InputData()
+   BanSolveOne()
+   InverseIter()
+   Output()
+}//Invitr
+
+function InputData(){
+Dummy = prompt ("Tolerance enter value (suggested 0.00001) ","")
+   tol = parseFloat(Dummy)
+Dummy = prompt ("Number of Eigenvalues Desired ","")
+   nev = parseInt(Dummy)
+   sh = 0
+Dummy = document.form.input.value
+//Read title,nq,nbw
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nq = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nbw = parseInt(Dummy1)
+//Read Stiffness Matrix
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nq; i++){
+   s[i] = new Array(nbw)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   for(j = 0; j < nbw; j++){
+      if (j < nbw - 1) {
+         s[i][j] = parseFloat(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+      }else{
+         s[i][j] = parseFloat(Dummy1)
+      }
+   }
+}
+
+//Read Mass Matrix
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nq; i++){
+   gm[i] = new Array(nbw)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   for(j = 0; j < nbw; j++){
+      if (j < nbw - 1) {
+         gm[i][j] = parseFloat(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+      }else{
+         gm[i][j] = parseFloat(Dummy1)
+      }
+   }
+}
+//Starting vector for inverse iteration
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+for(j = 0; j < nq; j++){
+   if (j < nq - 1) {
+      st[j] = parseFloat(token(Dummy1))
+      Dummy1=tknRemoved(Dummy1)
+   }else{
+      st[j] = parseFloat(Dummy1)
+   }
+ }
+
+}//InputData
+
+function BanSolveOne() {
+//-----  gauss elimination ldu approach (for symmetric banded matrices)
+  //----- stiffness reduction to upper triangular form
+     for (k = 1; k < nq; k++) {
+        nk = nq - k + 1
+        if (nk > nbw) {nk = nbw}
+        for (i = 2; i <= nk; i++) {
+           c1 = s[k-1][i-1] / s[k-1][0]
+           i1 = k + i - 2
+           for (j = i; j <= nk; j++) {
+              j1 = j - i
+              s[i1][j1] = s[i1][j1] - c1 * s[k-1][j-1]
+           }
+        }
+     }
+}//BanSolveOne()
+
+function InverseIter() {
+     itmax = 50
+     nev1 = nev
+     for (nv = 1; nv <= nev; nv++) {
+        evc[nv-1] = new Array(nq)
+        //--- starting value for eigenvector
+        for (i = 0; i < nq; i++) {
+           ev1[i] = st[i]
+        }
+        el2 = 0
+        iter = 0
+        do {
+           el1 = el2
+           iter = iter + 1
+           if (iter > itmax){
+              Dummy2 = 'no convergence for eigenvalue# ' + nv + '\n'
+              nev1 = nv - 1
+              break
+           }
+           if (nv > 1) {
+              //----  starting vector orthogonal to
+              //----       evaluated vectors
+              for (i = 1; i < nv; i++) {
+                 cv = 0
+                 for (k = 1; k <= nq; k++) {
+                    ka = k - nbw + 1
+                    kz = k + nbw - 1
+                    if (ka < 1) {ka = 1}
+                    if (kz > nq) {kz = nq}
+                    for (l = ka; l <= kz; l++) {
+                       if (l < k) {
+                          k1 = l - 1
+                          l1 = k - l
+                       }else{
+                          k1 = k - 1
+                          l1 = l - k 
+                       }
+                       cv = cv + evs[k-1] * gm[k1][l1] * evc[i-1][l-1]
+                    }
+                 }
+                 for (k = 0; k < nq; k++) {
+                    ev1[k] = ev1[k] - cv * evc[i-1][k]
+                 }
+              }
+           }
+           for (i = 1; i <= nq; i++) {
+              ia = i - nbw + 1
+              iz = i + nbw - 1
+              evt[i-1] = 0
+              if (ia < 1) {ia = 1}
+              if (iz > nq) {iz = nq}
+              for (k = ia; k <= iz; k++) {
+                 if (k < i) {
+                    i1 = k - 1
+                    k1 = i - k 
+                 }else{
+                    i1 = i - 1
+                    k1 = k - i
+                 }
+                 evt[i-1] = evt[i-1] + gm[i1][k1] * ev1[k-1]
+              }
+              ev2[i-1] = evt[i-1]
+           }
+           BanSolveTwo()          //<--- reduce right side and solve
+           c1 = 0
+           c2 = 0
+           for (i = 0; i < nq; i++) {
+              c1 = c1 + ev2[i] * evt[i]
+           }
+           for (i = 1; i <= nq; i++) {
+              ia = i - nbw + 1
+              iz = i + nbw - 1
+              evt[i-1] = 0
+              if (ia < 1) {ia = 1}
+              if (iz > nq) {iz = nq}
+              for (k = ia; k <= iz; k++) {
+                 if (k < i) {
+                    i1 = k - 1
+                    k1 = i - k
+                 }else{
+                    i1 = i - 1
+                    k1 = k - i
+                 }
+                 evt[i-1] = evt[i-1] + gm[i1][k1] * ev2[k-1]
+              }
+           }
+           for (i = 0; i < nq; i++) {
+              c2 = c2 + ev2[i] * evt[i]
+           }
+           el2 = c1 / c2
+           c2 = Math.sqrt(c2)
+           for (i = 0; i < nq; i++) {
+              ev1[i] = ev2[i] / c2
+              evs[i] = ev1[i]
+           }
+        } while (Math.abs(el2 - el1) / Math.abs(el2) > tol)
+        for (i = 0; i < nq; i++) {
+           evc[nv-1][i] = ev1[i]
+        }
+        niter[nv-1] = iter
+        el2 = el2 + sh
+        evl[nv-1] = el2
+     }
+}//InverseIter()
+
+function BanSolveTwo() {
+     //for multiple righthand sides
+     //----- reduction of the right hand side
+     for (k = 1; k <= nq - 1; k++) {
+        nk = nq - k + 1
+        if (nk > nbw) {nk = nbw}
+        for (i = 2; i <= nk; i++) {
+           i1 = k + i - 1
+           c1 = 1 / s[k-1][0]
+           ev2[i1-1] = ev2[i1-1] - c1 * s[k-1][i-1] * ev2[k-1]
+        }
+     }
+     //----- back substitution
+     ev2[nq-1] = ev2[nq-1] / s[nq-1][0]
+     for (ii = 1; ii < nq; ii++) {
+        i = nq - ii
+        c1 = 1 / s[i-1][0]
+        ni = nq - i + 1
+        if (ni > nbw) {ni = nbw}
+        ev2[i-1] = c1 * ev2[i-1]
+        for (k = 2; k <= ni; k++) {
+           ev2[i-1] = ev2[i-1] - c1 * s[i-1][k-1] * ev2[i + k - 2]
+        }
+     }
+}//BanSolveTwo()
+
+function Output() {
+   Dummy = 'Results from Program INVITR\n'
+   Dummy = Dummy + title + '\n'
+   if (nev1 < nev) {
+      Dummy = Dummy + 'Convergence of  ' + nev1 + '  eigenvalues only\n'
+      nev = nev1
+   }
+  for (nv = 0; nv < nev; nv++) { 
+     nv1 = nv + 1
+     Dummy = Dummy + 'Eigenvalue# = ' + nv1 + '  Iter# = ' + niter[nv] + '\n'
+     omega = Math.sqrt(evl[nv])
+     freq = 0.5 * omega / Math.PI
+     Dummy = Dummy + 'Eigenvalue = ' + evl[nv].toExponential(4) + '\n'
+     Dummy = Dummy + 'Omega = ' + omega.toExponential(4) + '\n'
+     Dummy = Dummy + 'Freq Hz = ' + freq.toExponential(4) + '\n'
+     Dummy = Dummy + 'Eigenvector\n'
+     for (i = 0; i < nq; i++) {
+        Dummy = Dummy + evc[nv][i].toExponential(4) + ' '
+     }
+     Dummy = Dummy + '\n'
+  }
+document.form.output.value = Dummy
+}//Output()
+
+
+
+
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Inverse Iteration for Eigenvalues and Eigenvectors</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Invitr(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<< EIGENVALUE ANALYIS INVITR >> Next line is problem title 
+EXAMPLE 11.5
+Num. of DOF    Bandwidth
+ 8             4 
+Banded Stiffness Matrix
+ 7.068601E+10  157080 -10472  157080 
+ 3141600 -157080  1570800  0 
+ 14889.88 -68722.5 -4417.875  88357.5 
+ 5497800 -88357.5  1178100  0 
+ 39760.88  265072.5 -35343  353430 
+ 7068600 -353430  2356200  0 
+ 7.068603E+10 -353430  0  0 
+ 4712400  0  0  0 
+Banded Mass Matrix
+ 2.563869E-02  .1084714  8.87493E-03 -6.409672E-02 
+ .591662  6.409672E-02 -.4437465  0 
+ .2670774  8.436662E-02  1.183324E-02 -.1139497 
+ 1.99412  .1139497 -1.051844  0 
+ .3621584 -.1446285  5.91662E-03 -2.848743E-02 
+ 1.577765  2.848743E-02 -.1314804  0 
+ 1.709246E-02 -.0482095  0  0 
+ .1753073  0  0  0 
+Starting Vector for Inverse Iteration
+1 1 1 1 1 1 1 1
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+(c) T.R.Chandrupatla & A.D.Belegundu
+</BODY>
+</HTML>

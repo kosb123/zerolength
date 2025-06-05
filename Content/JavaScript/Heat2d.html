@@ -1,0 +1,453 @@
+<HTML>
+<HEAD>
+<TITLE>Heat2d</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----           Program Heat2d             -----
+//--- Constant Strain Triangle for 2D Problems ---
+//            Chandrupatla & Belegundu
+//------------------------------------------------
+var Dummy, Dummy1, title
+var nn,ne,nm,ndim,nen,ndn,nd,nl,nbw,nq,npr=3
+var cnst,ipl,istr
+var x = new Array()
+var noc = new Array()
+var f = new Array()
+var ehs = new Array()
+var mat = new Array()
+var pm = new Array()
+var nu = new Array()
+var u = new Array()
+var nflux = new Array()
+var flux = new Array()
+var nconv = new Array()
+var h = new Array()
+var tinf = new Array()
+var bt = new Array()
+var q = new Array()
+var d = new Array()
+var b = new Array()
+var db = new Array()
+var se = new Array()
+var stiff = new Array()
+
+function Heat2d(){
+  InputData()
+  Bandwidth()
+  Stiffness()
+  ModifyForBC()
+  BandSolver()
+  HeatFlowCalc()
+  Output()
+}//Heat2d
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read NN,NE,... --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nn = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nm = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndim = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nen = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndn = parseInt(Dummy1)
+for(i = 0; i < nn; i++){
+  f[i] = 0
+  }
+/* ---  Read ND,NL,... --- */
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nd = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nl = parseInt(Dummy1)
+
+/* ---  Read coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   x[n] = new Array(ndim)
+   Dummy1=tknRemoved(Dummy1)
+   x[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   x[n][1] = parseFloat(Dummy1)
+}
+/* ---  Read connectivity etc --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   noc[n] = new Array(nen)
+   for(j = 0; j < nen; j++){
+   noc[n][j] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   }
+   mat[n] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   ehs[n] = parseFloat(Dummy1)
+}
+/* ---  Read Specified Displacements --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nd; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nu[i] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   u[i] = parseFloat(Dummy1)
+}
+/* ---  Read Component Loads --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nl; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   f[n] = parseFloat(Dummy1)
+}
+/* ---  Read Material Properties --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nm; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   pm[n] = parseFloat(Dummy1)
+}
+/* ---  Num of Edges with Specified Heat Flux  --- */
+/*      Followed by Edge n1  n2  q0  (Out is +)  */
+   Dummy = lineRemoved(Dummy)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nhf = parseInt(Dummy1)
+   if(nhf > 0) {
+      for(i = 0; i < nhf; i++){
+         nflux[i] = new Array(2)
+         Dummy1 = nxtLine(Dummy)
+         Dummy = lineRemoved(Dummy)
+         nflux[i][0] = parseInt(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+         nflux[i][1] = parseInt(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+         flux[i] = parseFloat(Dummy1)
+      }
+   }
+/* ---  Num of Edges with Convection  --- */
+/*      Followed by Edge n1  n2  h  tinf  */
+   Dummy = lineRemoved(Dummy)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   ncv = parseInt(Dummy1)
+   if(ncv > 0) {
+      for(i = 0; i < ncv; i++){
+         nconv[i] = new Array(2)
+         Dummy1 = nxtLine(Dummy)
+         Dummy = lineRemoved(Dummy)
+         nconv[i][0] = parseInt(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+         nconv[i][1] = parseInt(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+         h[i] = parseFloat(token(Dummy1))
+         Dummy1=tknRemoved(Dummy1)
+         tinf[i] = parseFloat(Dummy1)
+      }
+   }
+   Dummy = prompt ("Enter 1 for No plot data, 2 for data with nodal temperatures","")
+   ipl = parseInt(Dummy)
+}//InputData
+
+function Bandwidth() {
+     // ----- Bandwidth Evaluation ----- 
+     nbw = 0
+      for (i = 0; i < ne; i++){
+        nmin = noc[i][0]
+        nmax = noc[i][0]
+        for (j = 1; j < nen; j++){
+           if (nmin > noc[i][j]) {nmin = noc[i][j]}
+           if (nmax < noc[i][j]) {nmax = noc[i][j]}
+        }
+        ntmp = nmax - nmin + 1
+        if (nbw < ntmp) {nbw = ntmp}
+     }
+}//Bandwidth
+
+function Stiffness() {
+/* ----- stiffness matrix ----- */
+  /* --- Initialization of Matrices ---*/
+   for (i = 0; i < nn; i++){
+       stiff[i] = new Array(nbw)
+       for (j = 0; j < nbw; j++){
+          stiff[i][j] = 0
+       }
+   }
+
+   for (i = 0; i < 2; i++){
+      bt[i] = new Array(3)
+   } 
+     if (nhf > 0) {
+       for (i = 0; i < nhf; i++) {
+          n1 = nflux[i][0] - 1
+          n2 = nflux[i][1] - 1
+          v = flux[i]
+          elen = Math.sqrt((x[n1][0]-x[n2][0])*(x[n1][0]-x[n2][0]) + (x[n1][1]-x[n2][1])*(x[n1][1]-x[n2][1]))
+          f[n1] = f[n1] - elen * v / 2
+          f[n2] = f[n2] - elen * v / 2
+       }
+     }
+     if (ncv > 0) {
+       for (i = 0; i < ncv; i++) {
+          n1 = nconv[i][0] - 1
+          n2 = nconv[i][1] - 1
+          elen = Math.sqrt((x[n1][0]-x[n2][0])*(x[n1][0]-x[n2][0])+ (x[n1][1]-x[n2][1])*(x[n1][1]-x[n2][1]))
+          f[n1] = f[n1] + elen * h[i] * tinf[i] / 2
+          f[n2] = f[n2] + elen * h[i] * tinf[i] / 2
+          stiff[n1][0] = stiff[n1][0] + h[i] * elen / 3
+          stiff[n2][0] = stiff[n2][0] + h[i] * elen / 3
+          if (n1 >= n2) {
+             n3 = n1
+             n1 = n2
+             n2 = n3
+          }
+          stiff[n1][n2 - n1] = stiff[n1][n2 - n1] + h[i] * elen / 6
+       }
+     }
+     //----- conductivity matrix
+     for (i = 0; i < ne; i++) {
+        i1 = noc[i][0] - 1
+        i2 = noc[i][1] - 1
+        i3 = noc[i][2] - 1
+        x32 = x[i3][0] - x[i2][0]
+        x13 = x[i1][0] - x[i3][0]
+        x21 = x[i2][0] - x[i1][0]
+        y23 = x[i2][1] - x[i3][1]
+        y31 = x[i3][1] - x[i1][1]
+        y12 = x[i1][1] - x[i2][1]
+        detj = x13 * y23 - x32 * y31
+        area = 0.5 * Math.abs(detj)
+        //--- element heat sources
+        if (ehs[i] != 0) {
+           c = ehs[i] * area / 3
+           f[i1] = f[i1] + c
+           f[i2] = f[i2] + c
+           f[i3] = f[i3] + c
+        }
+        bt[0][0] = y23
+        bt[0][1] = y31
+        bt[0][2] = y12
+        bt[1][0] = x32
+        bt[1][1] = x13
+        bt[1][2] = x21
+        for (ii = 0; ii <  3; ii++) {
+           for (jj = 0; jj < 2; jj++) {
+              bt[jj][ii] = bt[jj][ii] / detj
+           }
+        }
+        for (ii = 0; ii < 3; ii++) {
+           for (jj = 0; jj < 3; jj++) {
+              ii1 = noc[i][ii] - 1
+              ii2 = noc[i][jj] - 1
+              if (ii1 <= ii2) {
+                 sum = 0
+                 for (j = 0; j < 2; j++) {
+                    sum = sum + bt[j][ii] * bt[j][jj]
+                 }
+                 ic = ii2 - ii1
+                 stiff[ii1][ic] = stiff[ii1][ic] + sum * area * pm[mat[i]-1]
+              }
+           }
+        }
+     }
+}//Stiffness
+
+function ModifyForBC(){
+     if (nd > 0) {
+       //--- modify for temp. boundary conditions
+       sum = 0
+       for (i = 0; i < nn; i++) {
+          sum = sum + stiff[i][0]
+       }
+       sum = sum / nn
+       cnst = sum * 1000000
+       for (i = 0; i < nd; i++) {
+          n = nu[i] - 1
+          stiff[n][0] = stiff[n][0] + cnst
+          f[n] = f[n] + cnst * u[i]
+       }
+     }
+}//ModifyForBC
+
+
+function BandSolver(){
+  /* ----- band solver ----- */
+  n1 = nn - 1
+  /* --- forward elimination --- */
+  for (k = 1; k <= n1; k++) {
+     nk = nn - k + 1
+     if (nk > nbw) {nk = nbw}
+     for (i = 2; i <= nk; i++) {
+       c1 = stiff[k-1][i-1] / stiff[k-1][0]
+       i1 = k + i - 1
+       for (j = i; j <= nk; j++) {
+	j1 = j - i + 1;
+	stiff[i1-1][j1-1] = stiff[i1-1][j1-1] - c1 * stiff[k-1][j-1]
+	}
+       f[i1-1] = f[i1-1] - c1 * f[k-1]
+       }
+     }
+  /* --- back-substitution --- */
+  f[nn-1] = f[nn-1] / stiff[nn-1][0]
+  for (kk = 1; kk <= n1;kk++) {
+     k = nn - kk
+     c1 = 1 / stiff[k-1][0]
+     f[k-1] = c1 * f[k-1]
+     nk = nn - k + 1
+     if (nk > nbw){nk = nbw}
+       for (j = 2; j <= nk; j++) {
+	 f[k-1] = f[k-1] - c1 * stiff[k-1][j-1] * f[k + j - 2]
+	}
+     }
+}//BandSolver
+
+function HeatFlowCalc(){
+   /*----- Heat Flow Calculation ----- */
+     for (i = 0; i < ne; i++) {
+        q[i] = new Array(2)
+        i1 = noc[i][0] - 1
+        i2 = noc[i][1] - 1
+        i3 = noc[i][2] - 1
+        x32 = x[i3][0] - x[i2][0]
+        x13 = x[i1][0] - x[i3][0]
+        x21 = x[i2][0] - x[i1][0]
+        y23 = x[i2][1] - x[i3][1]
+        y31 = x[i3][1] - x[i1][1]
+        y12 = x[i1][1] - x[i2][1]
+        detj = x13 * y23 - x32 * y31
+        bt[0][0] = y23
+        bt[0][1] = y31
+        bt[0][2] = y12
+        bt[1][0] = x32
+        bt[1][1] = x13
+        bt[1][2] = x21
+        for (ii = 0; ii < 3; ii++) {
+           for (jj = 0; jj < 2; jj++) {
+              bt[jj][ii] = bt[jj][ii] / detj
+           }
+        }
+        qx = bt[0][0] * f[i1] + bt[0][1] * f[i2] + bt[0][2] * f[i3]
+        qx = -qx * pm[mat[i]-1]
+        qy = bt[1][0] * f[i1] + bt[1][1] * f[i2] + bt[1][2] * f[i3]
+        qy = -qy * pm[mat[i]-1]
+        q[i][0] = qx
+        q[i][1] = qy
+     }
+}//HeatFlowCalc()
+
+function Output(){
+Dummy = title+'\n'
+Dummy=Dummy +'Node#   Temperature' +'\n'
+for (i = 0; i < nn; i++){
+  ii = i + 1
+  Dummy = Dummy +'  '+ ii + '   ' + f[i].toExponential(4) + '\n'
+}
+Dummy=Dummy +'Elem#    qx           qy (Conduction Heat Flow) ' +'\n'
+for (i = 0; i < ne; i++){
+  ii = i + 1
+  Dummy = Dummy  +'  '+ ii + '   ' + q[i][0].toExponential(4)+ '   ' + q[i][1].toExponential(4) + '\n'
+}
+  if (ipl > 1) {
+     Dummy = Dummy + '<Cut and paste Nodal Temperatures to file for Contour Program>\n'
+     Dummy  = Dummy + 'Plot Data (Nodal Temperatures)\n'
+     for (n = 0; n < nn; n++) {
+        Dummy = Dummy +  f[n].toFixed(3) + '\n'
+     }
+   }
+document.form.output.value = Dummy
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>FEA - 2D Heat Transfer Analysis</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Heat2d(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<< Heat 2D Heat Transfer >> Next line is problem title
+EXAMPLE 10.4
+NN  NE  NM  NDIM  NEN  NDN
+ 5   3   1   2     3    1
+ND   NL
+ 2   0
+Node#   X    Y
+ 1       0    0
+ 2      .4   0
+ 3      .4  .15
+ 4      .4  .3
+ 5      0   .3
+Elem# N1  N2  N3  MAT#  Elem_Heat_Source 
+ 1     1   2   3   1      0
+ 2     1   3   5   1      0
+ 3     4   3   5   1      0
+DOF#  Displacement (SPECIFIED TEMPERATURE)
+ 4      180.
+ 5      180.
+DOF#  Load (NODAL HEAT SOURCE)
+MAT#    ThermalConductivity
+ 1      1.5
+No. of edges with Specified Heat flux FOLLOWED BY two edges & q0 (positive if out)
+0
+No.of Edges with Convection FOLLOWED BY edge(2 nodes) &  h & Tinf
+2
+2 3 50 25
+3 4 50 25
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

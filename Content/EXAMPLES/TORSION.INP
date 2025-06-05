@@ -1,0 +1,29 @@
+'Next Line is the Problem Title
+EX10.5 TORSION
+NN  NE  NM  NDIM  NEN  NDN
+ 5  4  1  2  3  1
+ND   NL   NMPC
+ 3   0    0
+Node#     X          Y    
+ 1  0  0
+ 2  .02  .015
+ 3  .04  0
+ 4  .04  .03
+ 5  0  .03
+Elem# N1  N2  N3 MAT#    
+ 1    1   3   2  1  
+ 2    2   3   4  1  
+ 3    5   2   4  1  
+ 4    1   2   5  1  
+DOF#  Displacement
+ 3  0
+ 4  0
+ 5  0
+DOF#  Load
+MAT#   ShearModulus(G)  
+ 1  1.154E+07
+Torque
+1
+Symmetry Factor (eg. if 1/4 symmetry, then =4.0)
+4
+

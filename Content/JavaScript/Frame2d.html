@@ -1,0 +1,545 @@
+<HTML>
+<HEAD>
+<TITLE>Frame2D Analysis</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----   Program Frame2D    -----
+//    Chandrupatla & Belegundu
+//--------------------------------
+var Dummy, Dummy1, title
+var nn,ne,nm,ndim,nen,ndn,nd,nl,nmpc,cnst,nbw,nq,npr=1,istf
+var x = new Array()
+var noc = new Array()
+var f = new Array()
+var arin = new Array()
+var mat = new Array()
+var dt = new Array()
+var pm = new Array()
+var nu = new Array()
+var u = new Array()
+var mpc = new Array()
+var bt = new Array()
+var stress = new Array()
+var react = new Array()
+var se = new Array()
+var sep = new Array()
+var udl = new Array()
+var stiff = new Array()
+var dcos = new Array()
+var alambda = new Array()
+var ed = new Array()
+var edp = new Array()
+var ef = new Array()
+
+function Frame2D(){
+InputData()
+Bandwidth()
+Stiffness()
+AddLoads()
+ModifyForBC()
+BandSolver()
+EndActions()
+ReactionCalc()
+Output()
+}//Frame2D
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read NN,NE,... --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nn = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nm = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndim = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nen = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndn = parseInt(Dummy1)
+nq = nn*ndn
+for(i = 0; i < nq; i++){
+  f[i] = 0
+  }
+/* ---  Read ND,NL,... --- */
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nd = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nl = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nmpc = parseInt(Dummy1)
+/* ---  Read coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1))-1
+   x[n] = new Array(ndim)
+   Dummy1=tknRemoved(Dummy1)
+   x[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   x[n][1] = parseFloat(Dummy1)
+}
+/* ---  Read connectivity etc --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1))-1
+   Dummy1=tknRemoved(Dummy1)
+   noc[n] = new Array(nen)
+   for(j = 0; j < nen; j++){
+   noc[n][j] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   }
+   mat[n] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   arin[n] = new Array(2)
+   arin[n][0] = parseFloat(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   arin[n][1] = parseFloat(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   udl[n] = parseFloat(Dummy1)
+}
+/* ---  Read Specified Displacements --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nd; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nu[i] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   u[i] = parseFloat(Dummy1)
+}
+/* ---  Read Component Loads --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nl; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1))-1
+   Dummy1=tknRemoved(Dummy1)
+   f[n] = parseFloat(Dummy1)
+}
+/* ---  Read Material Properties --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nm; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1))-1
+   Dummy1=tknRemoved(Dummy1)
+   pm[n] = parseFloat(Dummy1)
+}
+/* ---  Read Multi-point Constraints --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nmpc; i++){
+   bt[i] = new Array(3)
+   mpc[i] = new Array(2)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   bt[i][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][0] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][1] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][1] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][2] = parseFloat(Dummy1)
+}
+}//InputData
+
+function Bandwidth() {
+     /* ----- Bandwidth Evaluation ----- */
+     nbw = 0
+     for (n = 0; n < ne; n++){
+        nabs = ndn*(Math.abs(noc[n][0] - noc[n][1]) + 1)
+        if (nbw < nabs){nbw = nabs}
+     }
+     for (i = 0; i < nmpc; i++){     
+        nabs = Math.abs(mpc[i][0] - mpc[i][1]) + 1
+        if (nbw < nabs){nbw = nabs}
+     }
+}//Bandwidth
+
+function Stiffness() {
+/* ----- assemble the stiffness matrix ----- */
+  /* --- Initialization of Matrices ---*/
+   for (i = 0; i < nq; i++){
+       stiff[i] = new Array(nbw)
+       for (j = 0; j < nbw; j++){
+          stiff[i][j] = 0
+       }
+   }
+   for (i = 0; i < 6; i++){
+      se[i] = new Array(6)
+      sep[i] = new Array(6)
+   }
+   for (i = 0; i < 3; i++){
+      dcos[i] = new Array(3)
+   }
+  /* --- Loop on Elements --- */
+   for (n = 0; n < ne; n++) {
+        istf = 2
+        ElemStiff(n)
+      /* --- Placing in Global Locations --- */
+	for (ii = 0; ii < nen; ii++) {
+	   nrt = ndn * (noc[n][ii] - 1)
+	   for (it = 0; it < ndn; it++) {
+	      nr = nrt + it
+	      i = ndn * ii + it
+	      for (jj = 0; jj < nen; jj++) {
+		 nct = ndn * (noc[n][jj] - 1)
+		 for (jt = 0; jt < ndn; jt++) {
+		    j = ndn * jj + jt
+		    nc = nct + jt - nr
+		    if (nc >= 0)
+		       stiff[nr][nc] = stiff[nr][nc] + se[i][j]
+		    }
+		 }
+	      }
+	   }
+   }
+}//Stiffness
+
+function ElemStiff(n) {
+// ----- connectivity and coordinate data ----- 
+     i1 = noc[n][0]-1
+     i2 = noc[n][1]-1
+     m = mat[n]-1
+     x21 = x[i2][0] - x[i1][0]
+     y21 = x[i2][1] - x[i1][1]
+     el = Math.sqrt(x21*x21 + y21*y21)
+     eal = pm[m] * arin[n][0] / el
+     eizl = pm[m] * arin[n][1] / el
+     //----- element stiffness matrix se() -----
+     for (i = 0; i < 6;i++){
+        for (j = 0; j < 6; j++){
+           sep[i][j] = 0
+        }
+     }
+     sep[0][0] = eal
+     sep[0][3] = -eal
+           sep[3][0] = sep[0][3]
+     sep[3][3] = eal
+     sep[1][1] = 12 * eizl / (el*el)
+     sep[1][2] = 6 * eizl / el
+           sep[2][1] = sep[1][2]
+     sep[1][4] = -sep[1][1]
+           sep[4][1] = sep[1][4]
+     sep[1][5] = sep[1][2]
+           sep[5][1] = sep[1][5]
+     sep[2][2] = 4 * eizl
+     sep[2][4] = -6 * eizl / el
+           sep[4][2] = sep[2][4]
+     sep[2][5] = 2 * eizl
+           sep[5][2] = sep[2][5]
+     sep[4][4] = 12 * eizl / (el*el)
+     sep[4][5] = -6 * eizl / el
+           sep[5][4] = sep[4][5]
+     sep[5][5] = 4 * eizl
+//----- convert element stiffness matrix to global system
+     dcos[0][0] = x21 / el
+     dcos[0][1] = y21 / el
+     dcos[0][2] = 0
+     dcos[1][0] = -dcos[0][1]
+     dcos[1][1] = dcos[0][0]
+     dcos[1][2] = 0
+     dcos[2][0] = 0
+     dcos[2][1] = 0
+     dcos[2][2] = 1
+  for (i = 0; i < 6; i++){
+      alambda[i] = new Array(6)
+      for (j = 0; j < 6; j++){
+       alambda[i][j] = 0
+      }
+  }
+     for (k = 0; k < 2; k++){
+       ik = 3 * k 
+       for (i = 0; i < 3;i++){
+         for (j = 0; j < 3;j++){
+           alambda[i + ik][j + ik] = dcos[i][j]
+         }
+       }
+     }
+  if (istf > 1) {
+     for (i = 0; i < 6; i++){
+      for (j = 0; j < 6; j++){
+       se[i][j] = 0
+       for (k = 0; k < 6; k++){
+         se[i][j] = se[i][j] + sep[i][k] * alambda[k][j]
+       }
+      }
+     }
+     for (i = 0;i < 6;i++){
+        for (j = 0; j < 6; j++){
+           sep[i][j] = se[i][j]
+        }
+     }
+     for (i = 0; i < 6; i++){
+      for (j = 0; j < 6; j++){
+       se[i][j] = 0
+       for (k = 0; k < 6; k++){
+         se[i][j] = se[i][j] + alambda[k][i] * sep[k][j]
+        }
+       }
+      }
+  }
+}//ElemStiff
+
+function AddLoads(){
+//----- loads due to uniformly distributed load on element
+   for (n = 0; n < ne; n++) {
+     if (Math.abs(udl[n]) > 0) {
+       istf = 1
+       ElemStiff(n)
+       i1 = noc[n][0]-1
+       i2 = noc[n][1]-1
+       x21 = x[i2][0] - x[i1][0]
+       y21 = x[i2][1] - x[i1][1]
+       el = Math.sqrt(x21 * x21 + y21 * y21)
+       ed[0] = 0
+       ed[1] = udl[n] * el / 2
+       ed[2] = udl[n] * el * el / 12
+       ed[3] = 0
+       ed[4] = ed[1]
+       ed[5] = -ed[2]
+       for (i = 0; i < 6; i++) {
+         edp[i] = 0
+         for (k = 0; k < 6; k++) {
+           edp[i] = edp[i] + alambda[k][i] * ed[k]
+         }
+       }
+       for (i = 0; i < 3; i++) {
+         f[3 * i1 + i] = f[3 * i1 + i] + edp[i]
+         f[3 * i2 + i] = f[3 * i2 + i] + edp[i + 3]
+       }
+     }
+   }
+}//AddLoads
+
+
+function ModifyForBC(){
+/* ----- decide penalty parameter cnst ----- */
+   cnst = 0
+   for (i = 0;i < nq; i++){
+       if (cnst < stiff[i][0]){cnst = stiff[i][0]}
+       }
+   cnst = 10000 * cnst
+/* ----- modify for displacement boundary conditions ----- */
+   for (i = 0; i < nd; i++) {
+      k = nu[i]
+      stiff[k-1][0] = stiff[k-1][0] + cnst
+      f[k-1] = f[k-1] + cnst * u[i]
+   }
+/* ----- modify for multipoint constraints ----- */
+   for (i = 0; i < nmpc; i++){
+       i1 = mpc[i][0]
+       i2 = mpc[i][1]
+       stiff[i1-1][0] = stiff[i1-1][0] + cnst*bt[i][0]*bt[i][0]
+       stiff[i2-1][0] = stiff[i2-1][0] + cnst*bt[i][1]*bt[i][1]
+       n=i1
+       if (n > i2){n = i2}
+       m = Math.abs(i2-i1)
+       stiff[n-1][m] = stiff[n-1][m]+cnst*bt[i][0]*bt[i][1]
+       f[i1-1] = f[i1-1] + cnst*bt[i][0]*bt[i][2]
+       f[i2-1] = f[i2-1] + cnst*bt[i][1]*bt[i][2]
+       }
+}//ModifyForBC
+
+
+function BandSolver(){
+  /* ----- band solver ----- */
+  n1 = nq - 1
+  /* --- forward elimination --- */
+  for (k = 1; k <= n1; k++) {
+     nk = nq - k + 1
+     if (nk > nbw) {nk = nbw}
+     for (i = 2; i <= nk; i++) {
+       c1 = stiff[k-1][i-1] / stiff[k-1][0]
+       i1 = k + i - 1
+       for (j = i; j <= nk; j++) {
+	j1 = j - i + 1;
+	stiff[i1-1][j1-1] = stiff[i1-1][j1-1] - c1 * stiff[k-1][j-1]
+	}
+       f[i1-1] = f[i1-1] - c1 * f[k-1]
+       }
+     }
+  /* --- back-substitution --- */
+  f[nq-1] = f[nq-1] / stiff[nq-1][0]
+  for (kk = 1; kk <= n1;kk++) {
+     k = nq - kk
+     c1 = 1 / stiff[k-1][0]
+     f[k-1] = c1 * f[k-1]
+     nk = nq - k + 1
+     if (nk > nbw){nk = nbw}
+       for (j = 2; j <= nk; j++) {
+	 f[k-1] = f[k-1] - c1 * stiff[k-1][j-1] * f[k + j - 2]
+	}
+     }
+}//BandSolver
+
+function EndActions(){
+   for (i = 0; i < ne; i++){
+       ef[i] = new Array(6)
+       for (j = 0; j < 6; j++){
+          ef[i][j] = 0
+       }
+   }
+//----- calculating member end-forces
+     for (n = 0; n < ne; n++) {
+       istf = 1
+       ElemStiff(n)
+       i1 = noc[n][0]-1
+       i2 = noc[n][1]-1
+       x21 = x[i2][0] - x[i1][0]
+       y21 = x[i2][1] - x[i1][1]
+       el = Math.sqrt(x21*x21 + y21*y21)
+       for (i = 0; i < 3; i++) {
+         ed[i] = f[3 * i1 + i]
+         ed[i + 3] = f[3 * i2 + i]
+       }
+       for (i = 0; i < 6; i++) {
+         edp[i] = 0
+         for (k = 0; k < 6; k++) {
+           edp[i] = edp[i] + alambda[i][k] * ed[k]
+         }
+       }
+//----- end forces due to distributed loads
+       if (Math.abs(udl[n]) > 0 ) {
+         ed[0] = 0
+         ed[1] = -udl[n] * el / 2
+         ed[2] = -udl[n] * el*el / 12
+         ed[3] = 0
+         ed[4] = ed[1]
+         ed[5] = -ed[2]
+       }else{
+         for(k = 0; k < 6; k++) {
+            ed[k] = 0
+         }
+       }
+       for (i = 0; i < 6; i++) {
+         ef[n][i] = ed[i]
+         for (k = 0; k < 6; k++) {
+           ef[n][i] = ef[n][i] + sep[i][k] * edp[k]
+         }
+       }
+     }
+}//EndActions
+
+function ReactionCalc(){
+     /* ----- Reaction Calculation ----- */
+     for (i = 0; i < nd; i++){
+        n = nu[i]
+        react[i] = cnst * (u[i] - f[n-1])
+     }
+}//ReactionCalc()
+
+
+function Output(){
+Dummy = title+'\n'
+//----- Displacements
+Dummy = Dummy +'Node# x-displ y-displ z-rotation' +'\n'
+for (i = 0; i < nn; i++){
+  ii = i + 1
+  Dummy = Dummy +'  '+ ii + '   ' + f[3*i].toExponential(4) + '   ' + f[3*i+1].toExponential(4) + '   ' + f[3*i+2].toExponential(4)+'\n'
+}
+//----- Member end actions
+Dummy = Dummy +'member end-forces' +'\n'
+for  (n = 0; n < ne; n++) {
+n1 = n+1
+Dummy = Dummy + 'member#' + n1  + '\n'
+  for (j = 0; j < 2; j++) {
+     jj= 3*j
+     Dummy = Dummy + ef[n][jj].toExponential(4) + '  '
+     Dummy = Dummy + ef[n][jj+1].toExponential(4) + '  '
+     Dummy = Dummy + ef[n][jj+2].toExponential(4) + '\n'
+  }
+}
+//----- Reactions
+Dummy=Dummy +'DOF#  ReactionForce' +'\n'
+for (i = 0; i < nd; i++){
+  Dummy = Dummy +'  ' + nu[i] + '   ' + react[i].toExponential(4) + '\n'
+}
+document.form.output.value = Dummy
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Finite Element Analysis - 2D Frame Problems</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Frame2D(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<< 2D FRAME ANALYSIS >>  Next line is problem title
+EXAMPLE 8.2
+NN NE NM NDIM NEN NDN
+4   3  1  2    2   3
+ND NL  NMPC
+6  1    0
+Node#  X   Y
+ 1     0  96
+ 2   144  96
+ 3     0   0
+ 4   144   0
+ELEM#  N1  N2  MAT#  Area  Inertia  Distr_load 
+ 1     2   1   1    6.8    65       41.6667
+ 2     3   1   1    6.8    65       0.
+ 3     4   2   1    6.8    65       0.
+DOF#  Displacement
+ 7     0
+ 8     0
+ 9     0
+10     0
+11     0
+12     0
+DOF#  Load
+ 1    3000
+MAT#   E
+ 1    30e6
+B1  i  B2 j  B3  (Multi-point constr. B1*Qi+B2*Qj=B3)
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

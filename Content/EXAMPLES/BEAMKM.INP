@@ -1,0 +1,22 @@
+<< STIFFNESS MASS USING BEAMKM >>
+EXAMPLE11.5
+NN  NE  NM  NDIM  NEN  NDN
+ 4   3   1   1     2    2
+ND   NL    NMPC
+ 2    0     0
+Node#     X  
+ 1        0
+ 2       30
+ 3       70
+ 4       90
+Elem# N1  N2   MAT#   Mom
+ 1     1   2    1      .7854         3.1416
+ 2     2   3    1      .7854         3.1416
+ 3     3   4    1      .7854         3.1416
+DOF#  Displacement
+ 1     0
+ 7     0
+DOF#  Load
+MAT#   Prop1(E)      Prop2(MassDensity Rho)
+ 1     3E+07        .0007324
+

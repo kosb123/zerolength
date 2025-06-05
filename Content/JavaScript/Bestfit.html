@@ -1,0 +1,261 @@
+<HTML>
+<HEAD>
+<TITLE>BESTFIT Program for Triangle Elements</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----            Program BESTFIT           -----
+//---          for Triangular Elements         ---
+//            Chandrupatla & Belegundu
+//------------------------------------------------
+var Dummy, Dummy1, title
+var nn,ne,ndim,nen,cnst,nbw,nq
+var x = new Array()
+var noc = new Array()
+var fs = new Array()
+var se = new Array()
+var fe = new Array()
+var s = new Array()
+var f = new Array()
+
+function Bestfit(){
+   InputData()
+   Bandwidth()
+   Stiffness()
+   BandSolver()
+   Output()
+}//Bestfit
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read NN,NE,... --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nn = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndim = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nen = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndn = parseInt(Dummy1)
+nq = nn
+/* ---  Read coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   x[n] = new Array(ndim)
+   Dummy1=tknRemoved(Dummy1)
+   x[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   x[n][1] = parseFloat(Dummy1)
+}
+/* ---  Read connectivity etc --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   noc[n] = new Array(nen)
+   noc[n][0] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   noc[n][1] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   noc[n][2] = parseInt(Dummy1)
+}
+/* ---  Read Element Values --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   fs[i] = parseFloat(Dummy1)
+}
+
+}//InputData
+
+function Bandwidth() {
+     // ----- Bandwidth Evaluation ----- 
+     nbw = 0
+      for (i = 0; i < ne; i++){
+        nmin = noc[i][0]
+        nmax = noc[i][0]
+        for (j = 1; j < nen; j++){
+           if (nmin > noc[i][j]) {nmin = noc[i][j]}
+           if (nmax < noc[i][j]) {nmax = noc[i][j]}
+        }
+        ntmp = nmax - nmin + 1
+        if (nbw < ntmp) {nbw = ntmp}
+     }
+}//Bandwidth
+
+function Stiffness() {
+     for (i = 0; i < nq; i++) {
+        s[i] = new Array(nbw)
+        f[i] = 0
+        for (j = 0; j < nbw; j++) {
+           s[i][j] = 0
+        }
+     }
+     for (i = 0; i < 3; i++) {
+        se[i] = new Array(3)
+     }
+    // ---  Global Stiffness Matrix
+     for (n = 0; n < ne; n++) {
+        ElemStiff(n)
+        for (ii = 0; ii < 3; ii++) {
+           nr = noc[n][ii] - 1
+           f[nr] = f[nr] + fe[ii]
+           for (jj = 0; jj < 3; jj++) {
+              nc = noc[n][jj] - nr
+              if (nc > 0) {
+                 s[nr][nc-1] = s[nr][nc-1] + se[ii][jj]
+              }
+           }
+        }
+     }
+} //Stiffness
+
+function ElemStiff(n) {
+     // --- Element Stiffness Formation
+     i1 = noc[n][0] - 1
+     i2 = noc[n][1] - 1
+     i3 = noc[n][2] - 1
+     x1 = x[i1][0]
+     y1 = x[i1][1]
+     x2 = x[i2][0]
+     y2 = x[i2][1]
+     x3 = x[i3][0]
+     y3 = x[i3][1]
+     x21 = x2 - x1
+     x32 = x3 - x2
+     x13 = x1 - x3
+     y12 = y1 - y2
+     y23 = y2 - y3
+     y31 = y3 - y1
+     dj = x13 * y23 - x32 * y31      //determinant of jacobian
+     ae = Math.abs(dj) / 24
+     se[0][0] = 2 * ae
+     se[0][1] = ae
+     se[0][2] = ae
+     se[1][0] = ae
+     se[1][1] = 2 * ae
+     se[1][2] = ae
+     se[2][0] = ae
+     se[2][1] = ae
+     se[2][2] = 2 * ae
+     a1 = fs[n] * Math.abs(dj) / 6
+     fe[0] = a1
+     fe[1] = a1
+     fe[2] = a1
+} //ElemStiff
+
+function BandSolver(){
+  /* ----- band solver ----- */
+  n1 = nq - 1
+  /* --- forward elimination --- */
+  for (k = 1; k <= n1; k++) {
+     nk = nq - k + 1
+     if (nk > nbw) {nk = nbw}
+     for (i = 2; i <= nk; i++) {
+       c1 = s[k-1][i-1] / s[k-1][0]
+       i1 = k + i - 1
+       for (j = i; j <= nk; j++) {
+	j1 = j - i + 1;
+	s[i1-1][j1-1] = s[i1-1][j1-1] - c1 * s[k-1][j-1]
+	}
+       f[i1-1] = f[i1-1] - c1 * f[k-1]
+       }
+     }
+  /* --- back-substitution --- */
+  f[nq-1] = f[nq-1] / s[nq-1][0]
+  for (kk = 1; kk <= n1;kk++) {
+     k = nq - kk
+     c1 = 1 / s[k-1][0]
+     f[k-1] = c1 * f[k-1]
+     nk = nq - k + 1
+     if (nk > nbw){nk = nbw}
+       for (j = 2; j <= nk; j++) {
+	 f[k-1] = f[k-1] - c1 * s[k-1][j-1] * f[k + j - 2]
+	}
+     }
+}//BandSolver
+
+
+function Output(){
+Dummy = '<< Nodal Values for input to CONTOUR >>\n'
+Dummy = Dummy + title+'\n'
+for (i = 0; i < nn; i++){
+  Dummy = Dummy  + f[i] +'\n'
+}
+
+document.form.output.value = Dummy
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))+' '
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Bestfit for Triangles - Element to Nodal Values</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Bestfit(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<< BESTFIT for Triangular Elements >> Next line is problem title
+EXAMPLE 5.5
+NN NE NDIM NEN NDN
+ 4  2  2    3   2
+Node#  X   Y
+ 1     3   0
+ 2     3   2
+ 3     0   2
+ 4     0   0
+Elem#  N1  N2  N3
+ 1     4   1   2
+ 2     3   4   2
+Max Shear Stress in Elements
+524.919
+298.662
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

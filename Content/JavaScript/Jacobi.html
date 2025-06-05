@@ -1,0 +1,359 @@
+<HTML>
+<HEAD>
+<TITLE>Inverse Interation for Eigenvalues</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//***************************************
+//*           PROGRAM JACOBI            *
+//*    Generalized Jacobi's Method      *
+//*       for symmetric matrices        *
+//*  T.R.Chandrupatla and A.D.Belegundu *
+//***************************************
+var Dummy, Dummy1, title
+var Dummy2 = ''
+var nq, cab, nsw, nswmax
+var tol
+
+var s = new Array()
+var gm = new Array()
+var evc = new Array()
+var evl = new Array()
+var nord = new Array()
+
+function Jacobi(){
+   InputData()
+   JacobiEigen()
+   Output()
+}//Jacobi
+
+function InputData(){
+   Dummy = prompt ("Tolerance enter value (suggested 0.00001) ","")
+   tol = parseFloat(Dummy)
+   Dummy = prompt ("Maximum Number of Sweeps (suggested 50) ","")
+   nswmax = parseInt(Dummy)
+   Dummy = document.form.input.value
+   //Read title,nq,nbw
+   Dummy = lineRemoved(Dummy)
+   title = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   Dummy = lineRemoved(Dummy)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nq = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   nbw = parseInt(Dummy1)
+   //Initialization of Stiffness and Mass Matrices
+   for (i = 0; i < nq; i++) {
+      s[i] = new Array(nq)
+      gm[i] = new Array(nq)
+      for (j = 0; j < nq; j++) {
+         s[i][j] = 0
+         gm[i][j] = 0
+      }
+   }
+   //Read Stiffness Matrix
+   Dummy = lineRemoved(Dummy)
+   for(i = 0; i < nq; i++){
+      Dummy1 = nxtLine(Dummy)
+      Dummy = lineRemoved(Dummy)
+      for(jn = 0; jn < nbw; jn++){
+         if (jn < nbw - 1) {
+            c = parseFloat(token(Dummy1))
+            Dummy1=tknRemoved(Dummy1)
+         }else{
+            c = parseFloat(Dummy1)
+         }
+         j = i + jn
+         if (j < nq) {
+            s[i][j] = c
+            s[j][i] = c
+         }
+      }
+   }
+   //Read Mass Matrix
+   Dummy = lineRemoved(Dummy)
+   for(i = 0; i < nq; i++){
+      Dummy1 = nxtLine(Dummy)
+      Dummy = lineRemoved(Dummy)
+      for(jn = 0; jn < nbw; jn++){
+         if (jn < nbw - 1) {
+            c = parseFloat(token(Dummy1))
+            Dummy1=tknRemoved(Dummy1)
+         }else{
+            c = parseFloat(Dummy1)
+         }
+         j = i + jn
+         if (j < nq) {
+            gm[i][j] = c
+            gm[j][i] = c
+         }
+      }
+   }
+}//InputData
+
+function JacobiEigen() {
+     //----- nord( ) is for ascending order of eigenvalues
+     for (i = 0; i < nq; i++) {nord[i] = i}
+     //----- initialize eigenvector matrix -----
+     for (i = 0; i < nq; i++) {
+        evc[i] = new Array(nq)
+        for (j = 0; j < nq; j++) {
+           evc[i][j] = 0
+        }
+        evc[i][i] = 1
+     }
+     c1 = s[0][0]
+     c2 = gm[0][0]
+     for (i = 0; i < nq; i++) {
+        if (c1 > s[i][i]) {c1 = s[i][i]}
+        if (c2 < gm[i][i]){c2 = gm[i][i]}
+     }
+     tols = tol * c1
+     tolm = tol * c2
+     k1 = 1
+     i1 = 1
+     nsw = 0
+   do {
+     nsw = nsw + 1
+     if (nsw > nswmax) {
+        //--- no convergence
+        break
+     }
+     for (k = k1; k < nq; k++) {
+        for (i = i1; i <= k; i++) {
+           ii = i - 1
+           j = nq - k + i
+           jj = j - 1
+           if (Math.abs(s[ii][jj]) > tols || Math.abs(gm[ii][jj]) > tolm) {
+              aa = s[ii][ii] * gm[ii][jj] - gm[ii][ii] * s[ii][jj]
+              bb = s[jj][jj] * gm[ii][jj] - gm[jj][jj] * s[ii][jj]
+              cc = s[ii][ii] * gm[jj][jj] - gm[ii][ii] * s[jj][jj]
+              cab = 0.25 * cc * cc + aa * bb
+              if (cab < 0) {
+                 //square root of negative term -- check matrices
+                 break
+              }
+              if (aa == 0) {
+                 bet = 0
+                 alp = -s[ii][jj] / s[ii][ii]
+              }else if (bb == 0) {
+                 alp = 0
+                 bet = -s[ii][jj] / s[jj][jj]
+              }else{
+                 sqc = Math.sqrt(cab)
+                 if (cc < 0) {sqc = -sqc}
+                 alp = (-0.5 * cc + sqc) / aa
+                 bet = -aa * alp / bb
+              }
+              //----- only upper triangular part is used in diagonalization
+              if (i > 1) {
+                 for (n = 1; n < i; n++) {
+                    si = s[n-1][ii]
+                    sj = s[n-1][jj]
+                    emi = gm[n-1][ii]
+                    emj = gm[n-1][jj]
+                    s[n-1][ii] = si + bet * sj
+                    s[n-1][jj] = sj + alp * si
+                    gm[n-1][ii] = emi + bet * emj
+                    gm[n-1][jj] = emj + alp * emi
+                 }
+              }
+              if (j < nq) {
+                 for (n = j + 1; n <= nq; n++) {
+                    si = s[ii][n-1]
+                    sj = s[jj][n-1]
+                    emi = gm[ii][n-1]
+                    emj = gm[jj][n-1]
+                    s[ii][n-1] = si + bet * sj
+                    s[jj][n-1] = sj + alp * si
+                    gm[ii][n-1] = emi + bet * emj
+                    gm[jj][n-1] = emj + alp * emi
+                 }
+              }
+              if (i < j) {
+                 for (n = i + 1; n < j; n++) {
+                    si = s[ii][n-1]
+                    sj = s[n-1][jj]
+                    emi = gm[ii][n-1]
+                    emj = gm[n-1][jj]
+                    s[ii][n-1] = si + bet * sj
+                    s[n-1][jj] = sj + alp * si
+                    gm[ii][n-1] = emi + bet * emj
+                    gm[n-1][jj] = emj + alp * emi
+                 }
+              }
+              sii = s[ii][ii]
+              sij = s[ii][jj]
+              sjj = s[jj][jj]
+              s[ii][jj] = 0
+              s[ii][ii] = sii + 2 * bet * sij + bet * bet * sjj
+              s[jj][jj] = sjj + 2 * alp * sij + alp * alp * sii
+              eii = gm[ii][ii]
+              eij = gm[ii][jj]
+              ejj = gm[jj][jj]
+              gm[ii][jj] = 0
+              gm[ii][ii] = eii + 2 * bet * eij + bet * bet * ejj
+              gm[jj][jj] = ejj + 2 * alp * eij + alp * alp * eii
+              //----- eigenvectors -----
+              for (n = 0; n < nq; n++) {
+                 evi = evc[ii][n]
+                 evj = evc[jj][n]
+                 evc[ii][n] = evi + bet * evj
+                 evc[jj][n] = evj + alp * evi
+              }
+           }
+        }
+     }
+     for (k = 1; k < nq; k++) {
+        for (i = 1; i <= k; i++) {
+           ii = i - 1
+           j = nq - k + i - 1
+           ifl = 0
+           if (Math.abs(s[ii][j]) > tols || Math.abs(gm[ii][j]) > tolm) {
+              k1 = k
+              i1 = i
+              ifl = 1
+           }
+          if (ifl == 1) { break }
+        }
+        if (ifl == 1) { break }
+     }
+   }while (ifl == 1)
+     if (nsw > nswmax || cab < 0) {return}
+     //-----  calculation of eigenvalues -----
+     for (i = 0; i < nq; i++) {
+        if (Math.abs(gm[i][i]) < tolm) {gm[i][i] = tolm}
+           evl[i] = s[i][i] / gm[i][i]
+     }
+     //----- scaling of eigenvectors
+     for (i = 0; i < nq; i++) {
+        gm2 = Math.sqrt(Math.abs(gm[i][i]))
+        for (j = 0; j < nq; j++) {
+           evc[i][j] = evc[i][j] / gm2
+        }
+     }
+     //-----   results   -----
+     //--- ascending order of eigenvalues
+     for (i = 0; i < nq; i++) {
+        ii = nord[i]
+        i1 = ii
+        c1 = evl[ii]
+        j1 = i
+        for (j = i; j < nq; j++) {
+           ij = nord[j]
+           if (c1 > evl[ij]) {
+              c1 = evl[ij]
+              i1 = ij
+              j1 = j
+           }
+        }
+        if (i1 != ii) {
+           nord[i] = i1
+           nord[j1] = ii
+        }
+     }
+}//JacobiEigen()
+
+
+function Output() {
+   Dummy = 'Results from Program JACOBI\n'
+   Dummy = Dummy + title + '\n'
+// Eigenvalues and Eigenvectors
+   if (nsw > nswmax) {
+      Dummy = Dummy + 'No convergence in  ' + nswmax + '  sweeps\n'
+      document.form.output.value = Dummy
+      return
+   }
+   if (cab < 0) {
+      Dummy = Dummy + 'Square root of negative term - check matrices\n'
+      document.form.output.value = Dummy
+      return
+   }
+  for (i = 0; i < nq; i++) { 
+     ii = nord[i]
+     iii = i + 1
+     Dummy = Dummy + 'Eigenvalue# = ' + iii + '\n'
+     omega = Math.sqrt(evl[ii])
+     freq = 0.5 * omega / Math.PI
+     Dummy = Dummy + 'Eigenvalue = ' + evl[ii].toExponential(4) + '\n'
+     Dummy = Dummy + 'Omega = ' + omega.toExponential(4) + '\n'
+     Dummy = Dummy + 'Freq Hz = ' + freq.toExponential(4) + '\n'
+     Dummy = Dummy + 'Eigenvector\n'
+     for (j = 0; j < nq; j++) {
+        Dummy = Dummy + evc[ii][j].toExponential(4) + ' '
+     }
+     Dummy = Dummy + '\n'
+  }
+document.form.output.value = Dummy
+}//Output()
+
+
+
+
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Jacobi Method for Eigenvalues and Eigenvectors</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Jacobi(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<< EIGENVALUE ANALYIS JACOBI >> Next line is problem title 
+EXAMPLE 11.5
+Num. of DOF    Bandwidth
+ 8             4 
+Banded Stiffness Matrix
+ 7.068601E+10  157080 -10472  157080 
+ 3141600 -157080  1570800  0 
+ 14889.88 -68722.5 -4417.875  88357.5 
+ 5497800 -88357.5  1178100  0 
+ 39760.88  265072.5 -35343  353430 
+ 7068600 -353430  2356200  0 
+ 7.068603E+10 -353430  0  0 
+ 4712400  0  0  0 
+Banded Mass Matrix
+ 2.563869E-02  .1084714  8.87493E-03 -6.409672E-02 
+ .591662  6.409672E-02 -.4437465  0 
+ .2670774  8.436662E-02  1.183324E-02 -.1139497 
+ 1.99412  .1139497 -1.051844  0 
+ .3621584 -.1446285  5.91662E-03 -2.848743E-02 
+ 1.577765  2.848743E-02 -.1314804  0 
+ 1.709246E-02 -.0482095  0  0 
+ .1753073  0  0  0 
+Starting Vector for Inverse Iteration
+1 1 1 1 1 1 1 1
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+(c) T.R.Chandrupatla & A.D.Belegundu
+</BODY>
+</HTML>

@@ -1,0 +1,33 @@
+<< AXISYMMETRIC STRESS ANALYSIS USING AXISYM>>
+EXAMPLE 6.2
+NN NE NM NDIM NEN NDN
+ 6  4  1  2    3   2
+ND NL  NMPC
+ 3  6   0
+Node#   X    Y   (r  z  coordinates)
+ 1      3    0
+ 2      3    .5
+ 3      7.5  0
+ 4      7.5  .5
+ 5     12    0
+ 6     12    .5
+Elem#  N1  N2  N3  Mat#  TempRise 
+ 1      1   3   2   1     0
+ 2      2   3   4   1     0
+ 3      4   3   5   1     0
+ 4      4   5   6   1     0
+DOF#  Displacement
+ 2     0
+ 6     0
+10     0
+DOF#  Load
+ 1    3449
+ 3    9580
+ 5   23380
+ 7   38711
+ 9   32580
+11   18780
+MAT#   E      Nu    Alpha
+ 1    30E6    .3    12E-6
+B1  i  B2 j  B3  (Multi-point constr. B1*Qi+B2*Qj=B3)
+

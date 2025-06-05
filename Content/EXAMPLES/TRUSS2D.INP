@@ -1,0 +1,29 @@
+Next line is problem title      << 2D TRUSS ANALYSIS >>
+EXAMPLE 4.1
+NN NE NM NDIM NEN NDN
+ 4  4  1  2    2   2
+ND NL  NMPC
+ 5  2   0
+Node#  X   Y
+ 1     0   0
+ 2    40   0
+ 3    40  30
+ 4     0  30
+Elem#  N1  N2  Mat#  Area  TempRise 
+ 1      1   2   1     1     0
+ 2      3   2   1     1     0
+ 3      3   1   1     1     0
+ 4      4   3   1     1     0
+DOF#  Displacement
+ 1     0
+ 2     0
+ 4     0
+ 7     0
+ 8     0
+DOF#  Load
+ 3     20000
+ 6    -25000
+MAT#   E      Alpha
+ 1    29.5E6  12E-6
+B1  i  B2 j  B3  (Multi-point constr. B1*Qi+B2*Qj=B3)
+

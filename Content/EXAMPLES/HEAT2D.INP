@@ -1,0 +1,29 @@
+TWO DIMENSIONAL HEAT ANALYSIS USING HEAT2D
+EXAMPLE 10.4
+NN  NE  NM  NDIM  NEN  NDN
+ 5   3   1   2     3    1
+ND   NL    NMPC
+ 2   0      0
+Node#   X    Y
+ 1      0    0
+ 2      .4   0
+ 3      .4  .15
+ 4      .4  .3
+ 5      0   .3
+Elem# N1  N2  N3  MAT#  Elem_Heat_Source 
+ 1     1   2   3   1      0
+ 2     1   3   5   1      0
+ 3     4   3   5   1      0
+DOF#  Displacement (SPECIFIED TEMPERATURE)
+ 4      180.
+ 5      180.
+DOF#  Load (NODAL HEAT SOURCE)
+MAT#    ThermalConductivity
+ 1      1.5
+No. of edges with Specified Heat flux FOLLOWED BY two edges & q0 (positive if out)
+0
+No.of Edges with Convection FOLLOWED BY edge(2 nodes) &  h & Tinf
+2
+2 3 50 25
+3 4 50 25
+

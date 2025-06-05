@@ -1,0 +1,500 @@
+<HTML>
+<HEAD>
+<TITLE>Constant Strain Trinagle - Stiffness Mass (CST)</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----             Program CstKM            -----
+//--- Constant Strain Triangle Stiffness/Mass  ---
+//            Chandrupatla & Belegundu
+//------------------------------------------------
+var Dummy, Dummy1, title
+var nn,ne,nm,ndim,nen,ndn,nd,nl,nmpc,cnst,nbw,nq,npr=4
+var lc
+var x = new Array()
+var noc = new Array()
+var f = new Array()
+var thick = new Array()
+var mat = new Array()
+var pm = new Array()
+var nu = new Array()
+var u = new Array()
+var mpc = new Array()
+var bt = new Array()
+var q = new Array()
+var d = new Array()
+var b = new Array()
+var db = new Array()
+var se = new Array()
+var em = new Array()
+var stiff = new Array()
+var gm = new Array()
+
+function CstKM(){
+   InputData()
+   Bandwidth()
+   StiffnMass()
+   ModifyForBC()
+   AddSprMass()
+   Output()
+}//CstKM
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read NN,NE,... --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nn = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nm = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndim = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nen = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndn = parseInt(token(Dummy1))
+nq = nn*ndn
+for(i = 0; i < nq; i++){
+  f[i] = 0
+  }
+/* ---  Read ND,NL,... --- */
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nd = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nl = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nmpc = parseInt(token(Dummy1))
+/* ---  Read coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   x[n] = new Array(ndim)
+   Dummy1=tknRemoved(Dummy1)
+   x[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   x[n][1] = parseFloat(token(Dummy1))
+}
+/* ---  Read connectivity etc --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   noc[n] = new Array(nen)
+   for(j = 0; j < nen; j++){
+      noc[n][j] = parseInt(token(Dummy1))
+      Dummy1 = tknRemoved(Dummy1)
+   }
+   mat[n] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   thick[n] = parseFloat(token(Dummy1))
+}
+/* ---  Read Specified Displacements --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nd; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nu[i] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   u[i] = parseFloat(token(Dummy1))
+}
+/* ---  Read Component Loads --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nl; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   f[n] = parseFloat(token(Dummy1))
+}
+/* ---  Read Material Properties --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nm; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   pm[n] = new Array(npr)
+   Dummy1=tknRemoved(Dummy1)
+ for(j = 0; j < npr; j++) {
+      pm[n][j] = parseFloat(token(Dummy1))
+      Dummy1=tknRemoved(Dummy1)
+   }
+}
+/* ---  Read Multi-point Constraints --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nmpc; i++){
+   bt[i] = new Array(3)
+   mpc[i] = new Array(2)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   bt[i][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][0] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][1] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][1] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][2] = parseFloat(token(Dummy1))
+ }
+   Dummy = prompt ("Enter 1 for Plane stress, 2 for Plane strain ","")
+   lc = parseInt(Dummy)
+
+}//InputData
+
+function Bandwidth() {
+     // ----- Bandwidth Evaluation ----- 
+     nbw = 0
+      for (i = 0; i < ne; i++){
+        nmin = noc[i][0]
+        nmax = noc[i][0]
+        for (j = 1; j < nen; j++){
+           if (nmin > noc[i][j]) {nmin = noc[i][j]}
+           if (nmax < noc[i][j]) {nmax = noc[i][j]}
+        }
+        ntmp = ndn * (nmax - nmin + 1)
+        if (nbw < ntmp) {nbw = ntmp}
+     }
+     for (i = 0; i < nmpc; i++){     
+        nabs = Math.abs(mpc[i][0] - mpc[i][1]) + 1
+        if (nbw < nabs){nbw = nabs}
+     }
+}//Bandwidth
+
+function StiffnMass() {
+/* ----- assemble the stiffness matrix ----- */
+  /* --- Initialization of Matrices ---*/
+   for (i = 0; i < nq; i++){
+       stiff[i] = new Array(nbw)
+       gm[i] = new Array(nbw)
+       for (j = 0; j < nbw; j++){
+          stiff[i][j] = 0
+          gm[i][j] = 0
+       }
+   }
+   for (i = 0; i < 6; i++){
+      se[i] = new Array(6)
+      em[i] = new Array(6)
+   }
+   for (i = 0; i < 3; i++){
+      b[i] = new Array(6)
+      db[i] = new Array(6)
+      d[i] = new Array(3)
+   } 
+
+  /* --- Loop on Elements --- */
+   for (n = 0; n < ne; n++) {
+        ElemKM(n)
+      /* --- Placing in Global Locations --- */
+	for (ii = 0; ii < nen; ii++) {
+	   nrt = ndn * (noc[n][ii] - 1)
+	   for (it = 0; it < ndn; it++) {
+	      nr = nrt + it
+	      i = ndn * ii + it
+	      for (jj = 0; jj < nen; jj++) {
+		 nct = ndn * (noc[n][jj] - 1)
+		 for (jt = 0; jt < ndn; jt++) {
+		    j = ndn * jj + jt
+		    nc = nct + jt - nr
+		    if (nc >= 0)
+		       stiff[nr][nc] = stiff[nr][nc] + se[i][j]
+		       gm[nr][nc] = gm[nr][nc] + em[i][j]
+		    }
+		 }
+	      }
+	   }
+   }
+}//StiffnMass
+
+function ElemKM(n) {
+     /*----- element stiffness matrix se() -----*/
+	dbmat(n)
+     /* --- element stiffness --- */
+        for (i = 0; i < 6; i++) {
+            for (j = 0; j < 6; j++) {
+                c = 0
+                for (k = 0; k < 3; k++) {
+                    c = c + .5 * Math.abs(dj) * b[k][i] * db[k][j] * thick[n]
+                    }
+		se[i][j] = c
+		}
+	    }
+     //--- Element Mass  EM()
+     m = mat[n] - 1
+     rho = pm[m][3]
+     cm = rho * thick[n] * 0.5 * Math.abs(dj) / 12
+     for (i = 0; i < 6; i++) {
+         for (j = 0; j < 6; j++) {
+            em[i][j] = 0
+         }
+     }
+     //--- Non-zero elements of mass matrix are defined
+     em[0][0] = 2 * cm
+     em[0][2] = cm
+     em[0][4] = cm
+     em[1][1] = 2 * cm
+     em[1][3] = cm
+     em[1][5] = cm
+     em[2][0] = cm
+     em[2][2] = 2 * cm
+     em[2][4] = cm
+     em[3][1] = cm
+     em[3][3] = 2 * cm
+     em[3][5] = cm
+     em[4][0] = cm
+     em[4][2] = cm
+     em[4][4] = 2 * cm
+     em[5][1] = cm
+     em[5][3] = cm
+     em[5][5] = 2 * cm
+}//ElemKM
+
+
+function dbmat(n) {
+/* ----- d[], b[] and db[] matrices ----- */
+     /* --- first the d-matrix --- */
+     m = mat[n]-1
+     e = pm[m][0]
+     pnu = pm[m][1]
+     al = pm[m][2]
+     /* --- d[] matrix --- */
+     if (lc == 1) {
+        /* --- plane stress --- */
+        c1 = e / (1 - pnu * pnu)
+        c2 = c1 * pnu
+        }
+     else {
+        /* --- plane strain --- */
+        c = e / ((1 + pnu) * (1 - 2 * pnu))
+        c1 = c * (1 - pnu)
+        c2 = c * pnu
+        }
+     c3 = .5 * e / (1 + pnu)
+     d[0][0] = c1
+     d[0][1] = c2
+     d[0][2] = 0
+     d[1][0] = c2
+     d[1][1] = c1
+     d[1][2] = 0
+     d[2][0] = 0
+     d[2][1] = 0
+     d[2][2] = c3
+/* --- strain-displacement matrix b() --- */
+     i1 = noc[n][0]-1
+     i2 = noc[n][1]-1
+     i3 = noc[n][2]-1
+     x1 = x[i1][0]
+     y1 = x[i1][1]
+     x2 = x[i2][0]
+     y2 = x[i2][1]
+     x3 = x[i3][0]
+     y3 = x[i3][1]
+     x21 = x2 - x1
+     x32 = x3 - x2
+     x13 = x1 - x3
+     y12 = y1 - y2
+     y23 = y2 - y3
+     y31 = y3 - y1
+     dj = x13 * y23 - x32 * y31 /* dj is determinant of jacobian */
+/* --- definition of b() matrix --- */
+     b[0][0] = y23 / dj
+     b[1][0] = 0.
+     b[2][0] = x32 / dj
+     b[0][1] = 0.
+     b[1][1] = x32 / dj
+     b[2][1] = y23 / dj
+     b[0][2] = y31 / dj
+     b[1][2] = 0.
+     b[2][2] = x13 / dj
+     b[0][3] = 0
+     b[1][3] = x13 / dj
+     b[2][3] = y31 / dj
+     b[0][4] = y12 / dj
+     b[1][4] = 0.
+     b[2][4] = x21 / dj
+     b[0][5] = 0.
+     b[1][5] = x21 / dj
+     b[2][5] = y12 / dj
+/* --- db matrix db = d*b ---*/
+     for (i = 0; i < 3; i++) {
+         for (j = 0; j < 6; j++) {
+             c = 0.
+             for (k = 0; k < 3; k++) {
+		 c = c + d[i][k] * b[k][j]
+		 }
+	     db[i][j] = c
+	     }
+	 }
+}//dbmat()
+
+
+function ModifyForBC(){
+/* ----- decide penalty parameter cnst ----- */
+   cnst = 0
+   for (i = 0;i < nq; i++){
+       if (cnst < stiff[i][0]){cnst = stiff[i][0]}
+       }
+   cnst = 10000 * cnst
+/* ----- modify for displacement boundary conditions ----- */
+   for (i = 0; i < nd; i++) {
+      k = nu[i]
+      stiff[k-1][0] = stiff[k-1][0] + cnst
+      f[k-1] = f[k-1] + cnst * u[i]
+   }
+/* ----- modify for multipoint constraints ----- */
+   for (i = 0; i < nmpc; i++){
+       i1 = mpc[i][0]
+       i2 = mpc[i][1]
+       stiff[i1-1][0] = stiff[i1-1][0] + cnst*bt[i][0]*bt[i][0]
+       stiff[i2-1][0] = stiff[i2-1][0] + cnst*bt[i][1]*bt[i][1]
+       n=i1
+       if (n > i2){n = i2}
+       m = Math.abs(i2-i1)
+       stiff[n-1][m] = stiff[n-1][m]+cnst*bt[i][0]*bt[i][1]
+       f[i1-1] = f[i1-1] + cnst*bt[i][0]*bt[i][2]
+       f[i2-1] = f[i2-1] + cnst*bt[i][1]*bt[i][2]
+       }
+}//ModifyForBC
+
+function AddSprMass() {
+   Dummy = lineRemoved(Dummy)
+   Dummy = lineRemoved(Dummy)
+   //Add Spring Stiffness Values
+   do {
+      Dummy1 = nxtLine(Dummy)
+      Dummy = lineRemoved(Dummy)
+      n = parseInt(token(Dummy1))
+      if (n > 0) {
+         Dummy1=tknRemoved(Dummy1)
+         stiff[n - 1][0] = stiff[n - 1][0] + parseFloat(token(Dummy1))
+      }
+   }while (n > 0)
+   Dummy = lineRemoved(Dummy)
+   Dummy = lineRemoved(Dummy)
+   //Add Lumped Masses
+  do {
+      Dummy1 = nxtLine(Dummy)
+      Dummy = lineRemoved(Dummy)
+      n = parseInt(token(Dummy1))
+      if (n > 0) {
+         Dummy1=tknRemoved(Dummy1)
+         gm[n - 1][0] = gm[n - 1][0] + parseFloat(token(Dummy1))
+      }
+   }while (n > 0)
+} //AddSprMass
+
+
+function Output(){
+Dummy = 'Results from Program CstKM'
+Dummy = title+'\n'
+Dummy=Dummy +'NumDOF  BandWidth' +'\n'
+Dummy = Dummy + nq + '   ' + nbw +'\n'
+Dummy=Dummy +'Banded Stiffness Matrix' +'\n'
+for (i = 0; i < nq; i++){
+   for (j = 0; j < nbw; j++){
+     Dummy = Dummy + stiff[i][j].toPrecision(8)+ '  '
+   }
+   Dummy = Dummy + '\n'
+}
+Dummy = Dummy + 'Banded Mass Matrix\n'
+for (i = 0; i < nq; i++){
+  for (j = 0; j < nbw; j++) {
+     Dummy = Dummy + gm[i][j].toPrecision(8) + '  '
+  }
+  Dummy = Dummy + '\n'
+}
+Dummy = Dummy + 'Starting Vector for Inverse Iteration\n'
+for (i = 0; i < nq; i++){
+   Dummy = Dummy + '1 '
+}
+document.form.output.value = Dummy
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii)+' ')
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>FEA - CST Stiffness and Mass</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "CstKM(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<< CstKM 2D STRESS ANALYSIS >> Next line is problem title
+EXAMPLE 5.5
+NN NE NM NDIM NEN NDN
+ 4  2  1  2    3   2
+ND NL  NMPC
+ 5  1   0
+Node#  X   Y
+ 1     3   0
+ 2     3   2
+ 3     0   2
+ 4     0   0
+Elem#  N1  N2  N3  Mat#  Thickness
+ 1      4   1   2   1     .5
+ 2      3   4   2   1     .5
+DOF#  Displacement
+ 2     0
+ 5     0
+ 6     0
+ 7     0
+ 8     0
+DOF#  Load
+ 4    -1000
+MAT#   E      Nu    Alpha   MassDensity (Rho)
+ 1    30E6   .25    12E-6   .0007324
+SPRING SUPPORTS  <DOF#=0 Exits this>
+DOF#    Spring Const
+0
+LUMPED MASSES    <DOF#=0 Exits this>
+DOF#    Lumped Mass
+3       0.2072538
+5       0.310881
+0
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

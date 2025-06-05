@@ -1,0 +1,255 @@
+<HTML>
+<HEAD>
+<TITLE>One Dimensional Bar</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----   Program HEAT1D    -----
+//    Chandrupatla & Belegundu
+//------------------------------
+var Dummy, Dummy1, title
+var nn,ne,nbc,nbw,nq,cnst
+var x = new Array()
+var f = new Array()
+var tc = new Array()
+var v = new Array()
+var h = new Array()
+var nb = new Array()
+var bc = new Array()
+var stiff = new Array()
+
+function Heat1d(){
+InputData()
+Stiffness()
+ModifyForBC()
+BandSolver()
+Output()
+}//Hat1d
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read ne,nbc,nq,nn --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nbc = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nq = parseInt(Dummy1)
+nq = parseInt(Dummy1)
+nn = ne + 1
+for(i = 0; i < nn; i++){
+  f[i] = 0
+  }
+//--- nbw is half the bandwidth elements 1-2,2-3,3-4,...
+nbw = 2
+/* ---  Thermal conductivity for each element --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   tc[n] = parseFloat(Dummy1)
+}
+/* ---  Coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   x[n] = parseFloat(Dummy1)
+}
+/* ---  Boundary Conditions --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nbc; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nb[i] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bc[i] = trim(Dummy1)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   if(bc[i] == 'TEMP' || bc[i] == 'temp'){
+      v[i] = parseFloat(Dummy1)
+   }
+   if(bc[i] == 'FLUX' || bc[i] == 'flux'){
+      v[i] = parseFloat(Dummy1)
+   }
+   if(bc[i] == 'CONV' || bc[i] == 'conv'){
+      h[i] = parseFloat(token(Dummy1))
+      Dummy1=tknRemoved(Dummy1)
+      v[i] = parseFloat(Dummy1)
+   }
+}
+/*----- Calculate and Input Nodal Heat Source Vector -----*/
+   if(nq > 0) {
+     for(i = 0; i < nq; i++) {
+        Dummy1 = nxtLine(Dummy)
+        Dummy = lineRemoved(Dummy)
+        n = parseInt(token(Dummy1)) - 1
+        Dummy1=tknRemoved(Dummy1)
+        f[n] = parseFloat(Dummy1)
+     }
+   }
+}//InputData
+
+function Stiffness() {
+/* ----- assemble the stiffness matrix ----- */
+   for (i = 0; i < nn; i++){
+       stiff[i] = new Array(nbw)
+       for (j = 0; j < nbw; j++){
+          stiff[i][j] = 0
+       }
+   }
+//----- stiffness matrix -----
+     for (i = 0; i < ne; i++) {
+        i1 = i
+        i2 = i + 1
+        ell = Math.abs(x[i2] - x[i1])
+        ekl = tc[i] / ell
+        stiff[i1][0] = stiff[i1][0] + ekl
+        stiff[i2][0] = stiff[i2][0] + ekl
+        stiff[i1][1] = stiff[i1][1] - ekl
+     }
+}//Stiffness
+
+function ModifyForBC(){
+/* ----- decide penalty parameter cnst ----- */
+     amax = 0
+     for (i = 0; i < nn; i++) {
+        if (stiff[i][0] > amax) amax = stiff[i][0]
+     }
+     cnst = amax * 10000
+     for (i = 0; i < nbc; i++) {
+        n = nb[i] - 1
+        if (bc[i] == 'CONV' || bc[i] == 'conv') {
+           stiff[n][0] = stiff[n][0] + h[i]
+           f[n] = f[n] + h[i] * v[i]
+        }else if (bc[i] == 'HFLUX' || bc[i] == 'hflux') {
+           f[n] = f[n] - v[i]
+        }else{
+           stiff[n][0] = stiff[n][0] + cnst
+           f[n] = f[n] + cnst * v[i]
+        }
+     }
+}//ModifyForBC
+
+function BandSolver(){
+  /* ----- band solver ----- */
+  n1 = nn - 1
+  /* --- forward elimination --- */
+  for (k = 1; k <= n1; k++) {
+     nk = nn - k + 1
+     if (nk > nbw) {nk = nbw}
+     for (i = 2; i <= nk; i++) {
+       c1 = stiff[k-1][i-1] / stiff[k-1][0]
+       i1 = k + i - 1
+       for (j = i; j <= nk; j++) {
+	j1 = j - i + 1;
+	stiff[i1-1][j1-1] = stiff[i1-1][j1-1] - c1 * stiff[k-1][j-1]
+	}
+       f[i1-1] = f[i1-1] - c1 * f[k-1]
+       }
+     }
+  /* --- back-substitution --- */
+  f[nn-1] = f[nn-1] / stiff[nn-1][0]
+  for (kk = 1; kk <= n1; kk++) {
+     k = nn - kk
+     c1 = 1 / stiff[k-1][0]
+     f[k-1] = c1 * f[k-1]
+     nk = nn - k + 1
+     if (nk > nbw){nk = nbw}
+       for (j = 2; j <= nk; j++) {
+	 f[k-1] = f[k-1] - c1 * stiff[k-1][j-1] * f[k + j - 2]
+	}
+     }
+}//BandSolver
+
+function Output(){
+Dummy = 'Results from Program Heat1D \n'
+Dummy = Dummy = Dummy + title + '\n'
+Dummy = Dummy + 'Node#     Temperature \n'
+for (i=0;i < nn;i++){
+   ii = i + 1
+   Dummy = Dummy +ii+'  '+ f[i].toExponential(4)+'\n'
+}
+
+document.form.output.value = Dummy
+
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+function trim(str) 
+{ 
+    str = str.replace(" ", '')
+    return str.replace('\n', '')
+}//trim()
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Finite Element Analysis - 1D Heat Transfer</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "Heat1d(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+Next line is problem title      << 1D HEAT TRANSFER >>
+EXAMPLE 10.1
+NE   #BOUNDARY CONDITIONS (B.C.'S)   #NODAL HEAT SOURCES
+ 3       2                              0
+ELEM#   THERMAL CONDUCTIVITY
+ 1       20.
+ 2       30.
+ 3       50.
+NODE COORDINATE
+ 1       0
+ 2      .3
+ 3      .45
+ 4      .6
+NODE  BC-TYPE followed by T0(if TEMP) or q0(if FLUX) or H and Tinf(if CONV)
+1    CONV
+  25   800
+4    TEMP
+20
+NODE    HEAT SOURCE
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

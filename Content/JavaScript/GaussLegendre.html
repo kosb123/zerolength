@@ -1,0 +1,84 @@
+<HTML>
+<HEAD>
+<TITLE>Gauss Legendre Integration</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+
+function GaussLegendre(){
+var Dummy, Dummy1, n
+
+Dummy = document.form.input.value
+Dummy = lineRemoved(Dummy) 
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)  //N
+n = parseInt(Dummy1)
+p3 = 0
+Dummy = 'IntegrationPoint        WeightFactor' + '\n'
+n1 = Math.floor((n + 1) / 2)
+ for (j = 1; j < n1+1; j++){
+  x = Math.cos(Math.PI * (j - 1 / 4) / (n + 1 / 2))
+   do {
+     p1 = 0
+     p2 = 1
+     for (i = 1; i < n+1; i++){
+       p3 = (2 - 1 / i) * x * p2 - (1 - 1 / i) * p1
+       p1 = p2
+       p2 = p3
+     }
+     dp = n / (x*x - 1) * (x * p2 - p1)
+     x = x - p2 / dp
+     } while (Math.abs(p3) > 0.000000000001)
+     w = 2 / (1 - x*x) / (dp*dp)
+     s1 = '+- '
+     if (Math.abs(x) < 0.000000000001){
+        s1 = '   '
+        x = '0                 '}
+     Dummy = Dummy + s1 + x
+     Dummy = Dummy + '   ' + w + '\n'
+}
+document.form.output.value = Dummy
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return str.substring(0,ii)
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+}//Gauss Legendre
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>Gauss Legendre Integration Points and Weights</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "GaussLegendre(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>//Gauss Legendre
+Number of Integration Points
+8
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+(c) T.R.Chandrupatla & A.D.Belegundu
+</BODY>
+</HTML>

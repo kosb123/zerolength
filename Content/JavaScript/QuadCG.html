@@ -1,0 +1,644 @@
+<HTML>
+<HEAD>
+<TITLE>2D Stress Analysis using QUAD Element</TITLE>
+<SCRIPT LANGUAGE = JavaScript>
+//-----                Program QuadCG                 -----
+//--- Quad Conjugate Gradient Method for 2D Problems    ---
+//            Chandrupatla & Belegundu
+//---------------------------------------------------------
+var Dummy, Dummy1, title
+var nn,ne,nm,ndim,nen,ndn,nd,nl,nmpc,cnst,nq,npr=3
+var lc
+var dj
+var x = new Array()
+var noc = new Array()
+var f = new Array()
+var thick = new Array()
+var mat = new Array()
+var dt = new Array()
+var pm = new Array()
+var nu = new Array()
+var u = new Array()
+var mpc = new Array()
+var bt = new Array()
+var qe = new Array()
+var str = new Array()
+var MaxShearStr = new Array()
+var vonMisesStr = new Array()
+var react = new Array()
+var d = new Array()
+var b = new Array()
+var db = new Array()
+var tl = new Array()
+var stiff = new Array()
+var xni = new Array()
+var dd = new Array()
+var ad = new Array()
+var gg = new Array()
+var q = new Array()
+
+
+function QuadCG(){
+InputData()
+Stiffness()
+ModifyForceforBC()
+CGsolve()
+StressCalc()
+ReactionCalc()
+Output()
+}//QuadCG
+
+function InputData(){
+Dummy = document.form.input.value
+/* ---  Read NN,NE,... --- */
+Dummy = lineRemoved(Dummy)
+title = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nn = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ne = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nm = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndim = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nen = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+ndn = parseInt(Dummy1)
+nq = nn*ndn
+for(i = 0; i < nq; i++){
+  f[i] = 0
+  q[i] = 0
+ gg[i] = 0
+  }
+/* ---  Read ND,NL,... --- */
+Dummy = lineRemoved(Dummy)
+Dummy1 = nxtLine(Dummy)
+Dummy = lineRemoved(Dummy)
+nd = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nl = parseInt(token(Dummy1))
+Dummy1 = tknRemoved(Dummy1)
+nmpc = parseInt(Dummy1)
+/* ---  Read coordinates --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nn; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   x[n] = new Array(ndim)
+   Dummy1=tknRemoved(Dummy1)
+   x[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   x[n][1] = parseFloat(Dummy1)
+}
+/* ---  Read connectivity etc --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < ne; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   noc[n] = new Array(nen)
+   for(j = 0; j < nen; j++){
+   noc[n][j] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   }
+   mat[n] = parseInt(token(Dummy1))
+   Dummy1 = tknRemoved(Dummy1)
+   thick[n] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   dt[n] = parseFloat(Dummy1)
+}
+/* ---  Read Specified Displacements --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nd; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   nu[i] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   u[i] = parseFloat(Dummy1)
+}
+/* ---  Read Component Loads --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nl; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   Dummy1=tknRemoved(Dummy1)
+   f[n] = parseFloat(Dummy1)
+}
+/* ---  Read Material Properties --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nm; i++){
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   n = parseInt(token(Dummy1)) - 1
+   pm[n] = new Array(npr)
+   Dummy1=tknRemoved(Dummy1)
+   pm[n][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   pm[n][1] = parseFloat(token(Dummy1)) 
+   Dummy1=tknRemoved(Dummy1)
+   pm[n][2] = parseFloat(Dummy1)
+}
+/* ---  Read Multi-point Constraints --- */
+Dummy = lineRemoved(Dummy)
+for(i = 0; i < nmpc; i++){
+   bt[i] = new Array(3)
+   mpc[i] = new Array(2)
+   Dummy1 = nxtLine(Dummy)
+   Dummy = lineRemoved(Dummy)
+   bt[i][0] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][0] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][1] = parseFloat(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   mpc[i][1] = parseInt(token(Dummy1))
+   Dummy1=tknRemoved(Dummy1)
+   bt[i][2] = parseFloat(Dummy1)
+ }
+   Dummy = prompt ("Enter 1 for Plane stress, 2 for Plane strain ","")
+   lc = parseInt(Dummy)
+}//InputData
+
+
+function Stiffness() {
+// ----- stiffness matrix of each element ----- 
+  // --- Initialization of Matrices ---
+   for (n = 0; n < ne; n++){
+       stiff[n] = new Array(8)
+       for (i = 0; i < 8; i++){
+         stiff[n][i] = new Array(8)
+         for (j = 0; j < 8; j++){
+            stiff[n][i][j] = 0
+         }
+       }
+   }
+   for (i = 0; i < 3; i++){
+      b[i] = new Array(8)
+      db[i] = new Array(8)
+      d[i] = new Array(3)
+   } 
+   for (i = 0; i < 4; i++){
+      xni[i] = new Array(2)
+   } 
+  integ(xni)
+  /* --- Loop on Elements --- */
+   for (n = 0; n < ne; n++) {
+        dmatrix(n)
+        ElemStiff(n)
+      /* --- Add temperature loads --- */
+	for (ii = 0; ii < nen; ii++) {
+	   nrt = ndn * (noc[n][ii] - 1)
+           for (it = 0; it < ndn; it++){
+              nr = nrt + it
+              i = ndn * ii + it
+              f[nr] = f[nr] + tl[i]
+              gg[nr] = gg[nr] + stiff[n][i][i]
+           }
+	}
+   }
+}//Stiffness
+
+function integ() {
+   //----- integration points xni() -----
+     c = .57735026919
+     xni[0][0] = -c
+     xni[0][1] = -c
+     xni[1][0] = c
+     xni[1][1] = -c
+     xni[2][0] = c
+     xni[2][1] = c
+     xni[3][0] = -c
+     xni[3][1] = c
+  }
+
+function dmatrix(){
+   // -----  d() matrix  ----- 
+     // --- material properties ---
+     m = mat[n]-1
+     e = pm[m][0]
+     pnu= pm[m][1]
+     al = pm[m][2]
+     // --- d() matrix ---
+     if (lc == 1) {
+        // --- plane stress --- 
+        c1 = e / (1 - pnu * pnu)
+        c2 = c1 * pnu;
+        }
+     else {
+        // --- plane strain ---
+        c = e / ((1 + pnu) * (1 - 2 * pnu))
+        c1 = c * (1 - pnu)
+        c2 = c * pnu
+        }
+     c3 = .5 * e / (1 + pnu)
+     d[0][0] = c1
+     d[0][1] = c2
+     d[0][2] = 0
+     d[1][0] = c2
+     d[1][1] = c1
+     d[1][2] = 0
+     d[2][0] = 0
+     d[2][1] = 0
+     d[2][2] = c3
+  }
+
+function ElemStiff(n) {
+     //----- element stiffness matrix se() -----
+     // --- weight factor is one --- 
+     // --- loop on integration points --- 
+     for (i = 0; i < 8; i++){
+        tl[i] = 0
+     }
+     for (ip = 0; ip < 4; ip++) { 
+     //---  get db matrix at integration point ip ---
+        xi = xni[ip][0]
+	eta = xni[ip][1]             
+	dbmat(n,xi,eta)
+     // --- element stiffness --- 
+        for (i = 0; i < 8; i++) {
+            for (j = 0; j < 8; j++) {
+                c = 0
+                for (k = 0; k < 3; k++) {
+                    c = c + dj * b[k][i] * db[k][j] * thick[n]
+                    }
+		stiff[n][i][j] = stiff[n][i][j] + c
+		}
+	    }
+
+     // --- temperature load vector ---
+        m = mat[n]-1
+        al = pm[m][2]       
+	c = al * dt[n]
+	if (lc == 2) {c = c * (1 + pnu)}
+	for (i = 0; i < 8; i++) {
+	    tl[i] = tl[i] + c * thick[n] * dj * (db[0][i] + db[1][i])
+	    }
+      }
+
+}//ElemStiff
+
+function dbmat(n,xi,eta) {
+var a = new Array()
+var g = new Array()
+   for (i = 0; i < 3; i++){
+      a[i] = new Array(4)
+   } 
+   for (i = 0; i < 4; i++){
+      g[i] = new Array(8)
+   }
+// ----- b[] and db[] matrices ----- 
+     // --- first the d-matrix --- 
+     m = mat[n]-1
+     e = pm[m][0]
+     pnu = pm[m][1]
+     al = pm[m][2]
+// --- strain-displacement matrix b() --- 
+     th = thick[n]
+     n1 = noc[n][0]-1
+     n2 = noc[n][1]-1
+     n3 = noc[n][2]-1
+     n4 = noc[n][3]-1
+     x1 = x[n1][0]
+     y1 = x[n1][1]
+     x2 = x[n2][0]
+     y2 = x[n2][1]
+     x3 = x[n3][0]
+     y3 = x[n3][1]
+     x4 = x[n4][0]
+     y4 = x[n4][1]
+     // --- formation of jacobian  tj ---
+     tj11 = ((1 - eta) * (x2 - x1) + (1 + eta) * (x3 - x4)) / 4
+     tj12 = ((1 - eta) * (y2 - y1) + (1 + eta) * (y3 - y4)) / 4
+     tj21 = ((1 - xi) * (x4 - x1) + (1 + xi) * (x3 - x2)) / 4
+     tj22 = ((1 - xi) * (y4 - y1) + (1 + xi) * (y3 - y2)) / 4
+     //--- determinant of the jacobian ---
+     dj = tj11 * tj22 - tj12 * tj21
+     // --- a[3,4] matrix relates strains to ---
+     // --- local derivatives of u ---
+     a[0][0] = tj22 / dj
+     a[1][0] = 0
+     a[2][0] = -tj21 / dj
+     a[0][1] = -tj12 / dj
+     a[1][1] = 0
+     a[2][1] = tj11 / dj
+     a[0][2] = 0
+     a[1][2] = -tj21 / dj
+     a[2][2] = tj22 / dj
+     a[0][3] = 0
+     a[1][3] = tj11 / dj
+     a[2][3] = -tj12 / dj
+     // --- g[4,8] matrix relates local derivatives of u ---
+     // --- to local nodal displacements q[8] ---
+     for (i = 0; i < 4; i++) {
+	 for (j = 0; j < 8; j++) {
+             g[i][j] = 0;
+	 }
+     }
+     g[0][0] = -(1 - eta) / 4
+     g[1][0] = -(1 - xi) / 4
+     g[2][1] = -(1 - eta) / 4
+     g[3][1] = -(1 - xi) / 4
+     g[0][2] = (1 - eta) / 4
+     g[1][2] = -(1 + xi) / 4
+     g[2][3] = (1 - eta) / 4
+     g[3][3] = -(1 + xi) / 4
+     g[0][4] = (1 + eta) / 4
+     g[1][4] = (1 + xi) / 4
+     g[2][5] = (1 + eta) / 4
+     g[3][5] = (1 + xi) / 4
+     g[0][6] = -(1 + eta) / 4
+     g[1][6] = (1 - xi) / 4
+     g[2][7] = -(1 + eta) / 4
+     g[3][7] = (1 - xi) / 4
+     // --- b[3,8] matrix relates strains to q ---
+     for (i = 0; i < 3; i++) {
+        for (j = 0; j < 8; j++) {
+           c = 0
+           for (k = 0; k < 4; k++) {
+               c = c + a[i][k] * g[k][j]
+               }
+           b[i][j] = c
+           }
+        }
+     // --- db[3,8] matrix relates stresses to q[8] ---
+     for (i = 0; i < 3; i++) {
+        for (j = 0; j < 8; j++) {
+           c = 0
+           for (k = 0; k < 3; k++) {
+               c = c + d[i][k] * b[k][j]
+               }
+	   db[i][j] = c
+	   }
+	}
+}//dbmat()
+
+
+function ModifyForceforBC(){
+//----- gg() diagonal stiffness summation
+//----- decide penalty parameter cnst -----
+     cnst = 0
+     for (i = 0; i < nq; i++){
+        if (cnst < gg[i]){cnst = gg[i]}
+     }
+     cnst = cnst * 10000
+//----- modify right hand side f() for boundary conditions -----
+     //--- displacement bc ---
+     for (i = 0; i < nd; i++){
+        n = nu[i] - 1
+        f[n] = f[n] + cnst * u[i]
+     }
+     //--- multi-point constraints ---
+     for (i = 0; i < nmpc; i++){
+        i1 = mpc[i][0] - 1
+        i2 = mpc[i][1] - 1
+        f[i1] = f[i1] + cnst * bt[i][0] * bt[i][2]
+        f[i2] = f[i2] + cnst * bt[i][1] * bt[i][2]
+     }
+}//ModifyForceforBC
+
+
+function CGsolve(){
+     //----- conjugate gradient method starts here
+     gg1 = 0
+     for (i = 0; i < nq; i++){
+        gg[i] = -f[i]
+        dd[i] = f[i]
+         q[i] = 0
+        ad[i] = 0
+          gg1 = gg1 + gg[i] * gg[i]
+     }
+     //-----  iteration loop
+    do {
+     //=====  element loop  =====
+     for (n = 0; n < ne; n++){
+        for(i = 0; i < 4; i++){
+           igt = 2 * (noc[n][i] - 1)
+           ilt = 2 * i
+           for (ii = 0; ii < 2; ii++){
+              ig = igt + ii
+              il = ilt + ii
+              for (j = 0; j < 4; j++){
+                 jgt = 2 * (noc[n][j] - 1)
+                 jlt = 2 * j
+                 for (jj = 0; jj < 2; jj++){
+                    jg = jgt + jj
+                    jl = jlt + jj
+                    ad[ig] = ad[ig] + stiff[n][il][jl] * dd[jg]
+                 }
+              }
+           }
+        }
+     }
+     //--- displacement bc ---
+     for (i = 0; i < nd; i++){
+        n = nu[i] - 1
+        ad[n] = ad[n] + cnst * dd[n]
+     }
+     //--- multi-point constraints ---
+     for (i = 0; i < nmpc; i++){
+        i1 = mpc[i][0] - 1
+        i2 = mpc[i][1] - 1
+        c = bt[i][0] * dd[i1] + bt[i][1] * dd[i2]
+        ad[i1] = ad[i1] + cnst * bt[i][0] * c
+        ad[i2] = ad[i2] + cnst * bt[i][1] * c
+     }
+        dad = 0
+        for (i = 0; i < nq; i++){
+           dad = dad + dd[i] * ad[i]
+        }
+        al = gg1 / dad
+        gg2 = 0
+        for (i = 0; i < nq; i++){
+           gg[i] = gg[i] + al * ad[i]
+           q[i] = q[i] + al * dd[i]
+           gg2 = gg2 + gg[i] * gg[i]
+        }
+        if (gg2 > 0.00000001) {
+           bta = gg2 / gg1
+           gg1 = gg2
+           for (i = 0; i < nq; i++){
+              dd[i] = -gg[i] + bta * dd[i]
+           }
+           for (i = 0; i < nq; i++){
+               ad[i] = 0
+           }
+        }
+    } while (gg2 > 0.00000001) //do loop
+}//CGsolve
+
+function StressCalc(){
+   // ----- stresses at integration points -----
+     for (n = 0; n < ne; n++) {
+        MaxShearStr[n] = new Array(4)
+        vonMisesStr[n] = new Array(4)
+        for (ip = 0; ip < 4; ip++) {
+	   xi = xni[ip][0]
+	   eta = xni[ip][1]
+	   dmatrix(n)
+	   dbmat(n,xi,eta)
+	   // --- stress evaluation ---
+	   for (i = 0; i < nen; i++) {
+	      ig = ndn * (noc[n][i] - 1)
+	      ii = ndn * i
+	      for (j = 0; j < ndn; j++) {
+		 qe[ii + j] = q[ig + j]
+		 }
+	      }
+           m = mat[n]-1
+           e = pm[m][0]
+           pnu = pm[m][1]
+           al = pm[m][2]
+	   c1 = al * dt[n]
+	   if (lc == 2)
+              c1 = c1 * (1 + pnu)
+           for (i = 0; i < 3; i++) {
+              c = 0;
+              for (k = 0; k < 8; k++) {
+                  c = c + db[i][k] * qe[k]
+                  }
+                 str[i] = c - c1 * (d[i][0] + d[i][1])
+              }
+        // --- von mises stress at integration points ---
+           c = 0
+	   if (lc == 2) {c = pnu * (str[0] + str[1])}
+	   c1 = (str[0] - str[1]) * (str[0] - str[1])
+	   c1 = c1 + (str[1] - c) * (str[1] - c)
+	   c1 = c1 + (c - str[0]) * (c - str[0])
+	   vonMisesStr[n][ip] = Math.sqrt(.5 * c1 + 3 * str[2] * str[2])
+        // --- maximum shear stress at integration points ---
+           c = .25 * (str[0]-str[1])*(str[0]-str[1])
+           c = c + str[2]*str[2]
+           MaxShearStr[n][ip] = Math.sqrt(c)
+	   }   
+    }
+}//StressCalc()
+
+function ReactionCalc(){
+     /* ----- Reaction Calculation ----- */
+     for (i = 0; i < nd; i++){
+        n = nu[i]
+        react[i] = cnst * (u[i] - q[n-1])
+     }
+}//ReactionCalc()
+
+function Output(){
+Dummy = title+'\n'
+Dummy = Dummy +'Node# X-Displ.  Y-Displ.' +'\n'
+for (i = 0; i < nn; i++){
+  ii = i + 1
+  Dummy = Dummy +'  '+ ii + '   ' + q[2*i].toExponential(4)+ '   ' + q[2*i+1].toExponential(4) + '\n'
+}
+Dummy = Dummy +'Elem# vonMisesStress' +'\n'
+for (i = 0; i < ne; i++){
+  ii = i + 1
+  Dummy = Dummy  +'  '+ ii + '   ' + vonMisesStr[i][0].toExponential(4)+ '   ' + vonMisesStr[i][1].toExponential(4)
+  Dummy = Dummy  +'   ' + vonMisesStr[i][2].toExponential(4)+ '   ' + vonMisesStr[i][3].toExponential(4) + '\n'
+}
+Dummy = Dummy +'DOF#  ReactionForce' +'\n'
+for (i = 0; i < nd; i++){
+  Dummy = Dummy +'  ' + nu[i] + '   ' + react[i].toExponential(4) + '\n'
+} 
+Dummy = Dummy + '\n' + 'Below is Plot Data' + '\n'
+Dummy = Dummy + 'Cut and Paste vonMisesStr or MaxShearStr to a separate file' + '\n'
+Dummy = Dummy +'Element vonMisesStress' +'\n'
+for (i = 0; i < ne; i++){
+  ii = i + 1
+  Dummy = Dummy  + vonMisesStr[i][0].toExponential(4)+ '   ' + vonMisesStr[i][1].toExponential(4)
+  Dummy = Dummy  +'   ' + vonMisesStr[i][2].toExponential(4)+ '   ' + vonMisesStr[i][3].toExponential(4) + '\n'
+}
+Dummy = Dummy +'Element MaxShearStress' +'\n'
+for (i = 0; i < ne; i++){
+  ii = i + 1
+  Dummy = Dummy  + MaxShearStr[i][0].toExponential(4)+ '   ' + MaxShearStr[i][1].toExponential(4)
+  Dummy = Dummy  +'   ' + MaxShearStr[i][2].toExponential(4)+ '   ' + MaxShearStr[i][3].toExponential(4) + '\n'
+}
+document.form.output.value = Dummy
+}//Output
+
+function nxtLine(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(0,ii))
+}//nxtLine()
+
+function lineRemoved(str){
+ii=str.indexOf('\n')
+return ltrim(str.substring(ii+1))
+}//removed()
+
+function token(str){
+ii = str.indexOf(' ')
+return str.substring(0,ii)
+}
+
+function tknRemoved(str){
+ii = str.indexOf(' ')
+return ltrim(str.substring(ii+1))
+}
+
+function ltrim(str) 
+{ 
+    return str.replace(/^[ ]+/, ''); 
+}//ltrim()
+
+
+
+
+</SCRIPT>
+</HEAD>
+
+<BODY BGCOLOR = LightSalmon>
+<H2>FEA - QUAD Element 2D Conjugate Gradient</H2>
+Edit input or cut and paste from a text editor then click SOLVE.
+<FORM NAME = form onSubmit = "QuadCG(); return false">
+<TEXTAREA NAME=input ROWS=13 COLS=84>
+<<QuadCG 2D STRESS ANALYSIS >> Next line is problem title
+PROBLEM 7.4
+NN NE NM NDIM NEN NDN
+9 4 1 2 4 2
+ND NL NMPC
+6 1  0
+Node#  X  Y
+1 0 0
+2 0 15
+3 0 30
+4 30 0
+5 30 15
+6 30 30
+7 60 0
+8 60 15
+9 60 30
+Elem#  Nodes  Mat#  Thickness  TempRise 
+1 1 4 5 2 1 10 0
+2 2 5 6 3 1 10 0
+3 4 7 8 5 1 10 0
+4 5 8 9 6 1 10 0
+DOF#  Displacement
+1 0
+2 0
+3 0
+4 0
+5 0
+6 0
+DOF#  Load
+18 -10000
+MAT#  E  Nu  Alpha
+1 70000 .33 12E-6
+B1  i  B2 j  B3  (Multi-point constr. B1*Qi+B2*Qj=B3)
+</TEXTAREA><BR>
+<INPUT TYPE = submit value = 'SOLVE'><BR>
+<TEXTAREA NAME=output ROWS=13 COLS=84></TEXTAREA><BR>
+</FORM>
+<div style="display: block; font-family: Verdana, Geneva, Arial; font-size: 12px">
+<pre>All care has been taken in preparing the program. The authors or the publishers shall not be
+liable for incidental or conseqential damages arising out of the use of the program.
+
+(c) T.R.Chandrupatla & A.D.Belegundu</pre>
+</BODY>
+</HTML>

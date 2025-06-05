@@ -1,0 +1,28 @@
+<<2-D  Frame Analysis using FRAME2D >>
+EXAMPLE 8.2
+NN NE NM NDIM NEN NDN
+4   3  1  2    2   3
+ND NL  NMPC
+6  1    0
+Node#  X   Y
+ 1     0  96
+ 2   144  96
+ 3     0   0
+ 4   144   0
+ELEM#  N1  N2  MAT#  Area  Inertia  Distr_load 
+ 1      2   1   1    6.8    65       41.6667
+ 2      3   1   1    6.8    65        0.
+ 3      4   2   1    6.8    65        0.
+DOF#  Displacement
+ 7     0
+ 8     0
+ 9     0
+10     0
+11     0
+12     0
+DOF#  Load
+ 1    3000
+MAT#   E
+ 1    30e6
+B1  i  B2 j  B3  (Multi-point constr. B1*Qi+B2*Qj=B3)
+
