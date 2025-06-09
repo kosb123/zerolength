@@ -33,8 +33,8 @@ function MyElement3D() {
       {nodes.map(({ id, x, y, z }, idx) => (
         <group key={idx} position={[x, y, z]}>
           <mesh>
-            <sphereGeometry args={[0.1, 16, 16]} />
-            <meshBasicMaterial color="skyblue" />
+            <sphereGeometry args={[0.05, 16, 16]} />
+            <meshBasicMaterial color="black" />
           </mesh>
           <Text
             position={[0.15, 0, 0]}
