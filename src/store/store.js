@@ -7,6 +7,7 @@ const parameter = create(set => ({
   materials: [],
   forces: [],
   displacements: [],
+  variables: [],
 
   // 상태 변경 함수도 필요하면 추가
   setNodes: (nodes) => set({ nodes }),
@@ -15,6 +16,8 @@ const parameter = create(set => ({
   setMaterials: (materials) => set({ materials }),
   setForce: (forces) => set({ forces }),
   setDisplacement: (displacements) => set({ displacements }),
+  setVariables: (variables) => set({ variables }),
+  addVariable: (variable) => set(state => ({ variables: [...state.variables, variable] })),
 }));
 
 // 전역에 할당 (개발 편의를 위해)

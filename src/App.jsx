@@ -6,6 +6,7 @@ import NodeMenu from './Menu/NodeMenu';
 import MainMenu from './Menu/MainMenu';
 import Members from './Menu/Members';
 import SectionMenu from './Menu/SectionMenu';
+import VariableMenu from './Menu/VariableMenu';
 
 function App() {
   const [activeMenu, setActiveMenu] = useState('Main');
@@ -29,6 +30,9 @@ function App() {
         )}
         {activeMenu === 'Members' && (
           <Members onBack={() => setActiveMenu('Main')} />
+        )}
+        {activeMenu === 'Variables' && (
+          <VariableMenu onBack={() => setActiveMenu('Main')} />
         )}
         {activeMenu === 'Sections' && (
           <SectionMenu onBack={() => setActiveMenu('Main')} />
