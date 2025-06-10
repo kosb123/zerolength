@@ -29,7 +29,13 @@ function VariableMenu({ onBack }) {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    setKeys(["id", ...trimmed]);
+    const nextKeys = ["id", ...trimmed];
+    setKeys(nextKeys);
+
+    // 기본 입력 행 하나 생성
+    if (rows.length === 0) {
+      setRows([{ id: 1 }]);
+    }
   };
 
   const handleSave = () => {
@@ -108,7 +114,7 @@ function VariableMenu({ onBack }) {
                         {keys.map((k) => (
                           <td key={k} style={styles.td}>
                             <input
-                              style={styles.input}
+                              style={styles.cellInput}
                               value={row[k] || ""}
                               onChange={(e) =>
                                 handleRowChange(rIdx, k, e.target.value)
@@ -221,6 +227,15 @@ const styles = {
     marginBottom: 8,
     boxSizing: "border-box",
   },
+  cellInput: {
+    padding: 4,
+    border: "none",
+    backgroundColor: "transparent",
+    color: "#fff",
+    width: "100%",
+    outline: "none",
+    textAlign: "center",
+  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
@@ -228,15 +243,15 @@ const styles = {
     marginTop: 8,
   },
   th: {
-    borderBottom: "2px solid #555",
-    padding: "8px 4px",
+    border: "1px solid #555",
+    padding: "6px 4px",
     backgroundColor: "#1e293b",
     fontSize: 13,
     color: "#ccc",
   },
   td: {
-    borderBottom: "1px solid #333",
-    padding: "6px 4px",
+    border: "1px solid #444",
+    padding: "4px",
     fontSize: 13,
     color: "#eee",
   },
@@ -255,8 +270,8 @@ const styles = {
     backgroundColor: "#000",
     padding: 20,
     borderRadius: 4,
-    width: "80%",
-    maxWidth: 500,
+    width: "90%",
+    maxWidth: 800,
   },
 };
 
