@@ -32,9 +32,12 @@ function VariableMenu({ onBack }) {
     const nextKeys = ["id", ...trimmed];
     setKeys(nextKeys);
 
-    // 기본 입력 행 하나 생성
     if (rows.length === 0) {
-      setRows([{ id: 1 }]);
+      const firstRow = {};
+      nextKeys.forEach((k, i) => {
+        firstRow[k] = k === "id" ? 1 : "";
+      });
+      setRows([firstRow]);
     }
   };
 
@@ -96,7 +99,7 @@ function VariableMenu({ onBack }) {
             >
               테이블 생성
             </button>
-            {keys.length > 1 && (
+            {rows.length > 0 && (
               <>
                 <table style={styles.table}>
                   <thead>
