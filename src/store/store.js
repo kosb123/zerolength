@@ -11,7 +11,6 @@ const parameter = create(
       materials: [],
       forces: [],
       displacements: [],
-      variables: [],
 
       // 상태 변경 함수도 필요하면 추가
       setNodes: (nodes) => set({ nodes }),
@@ -20,9 +19,6 @@ const parameter = create(
       setMaterials: (materials) => set({ materials }),
       setForce: (forces) => set({ forces }),
       setDisplacement: (displacements) => set({ displacements }),
-      setVariables: (variables) => set({ variables }),
-      addVariable: (variable) =>
-        set((state) => ({ variables: [...state.variables, variable] })),
     }),
     { name: 'ParameterStore' } // 3. DevTools에 표시될 스토어 이름을 지정합니다.
   )
