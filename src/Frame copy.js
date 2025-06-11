@@ -28,12 +28,16 @@ const materials = [
 
 const pointloads = [
   { node_id: 3, fx: 0, fy: 0, fz: 240000, mx: 0, my: 0, mz: 0 },
-  { node_id: 4, fx: -60000, fy: 0, fz: 0, mx: 0, my: 0, mz: -180000 },
+  { node_id: 4, fx: 0, fy: -60000, fz: 0, mx: 0, my: 0, mz: -180000 },
+];
+
+const localdistributedloads = [
+  { member_id: 1, wy: -4000, wz: 0 }
 ];
 
 
-const distributedloads = [
-  { member_id: 1, start_fx: 0, end_fx: 3, start_fy: 0, end_fy: 0, start_fz: 0, end_fz: 0, start_position: 0, end_position: 100 }
+const golbaldistributedloads = [
+  { member_id: 1, wy: 0, wz: 0 }
 ];
 
 // 이 부분은 supports로 대체될 것이므로 제거합니다.
@@ -293,6 +297,10 @@ function createGlobalForceVector(pointloads, nodes) {
 }
 
 const force = createGlobalForceVector(pointloads, nodes);
+
+
+
+
 
 // 4. 메인 실행 로직
 console.log("해석을 시작합니다...");
