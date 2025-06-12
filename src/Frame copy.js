@@ -32,7 +32,7 @@ const pointloads = [
 ];
 
 const localdistributedloads = [
-  { member_id: 1, wy: -4000, wz: 0 }
+  { member_id: 1, wy: -40000, wz: 0 }
 ];
 
 
@@ -94,51 +94,70 @@ function createLocalStiffnessMatrix(eal, eiyl, eizl, gjl, el) {
   ];
 }
 
-// 방향여현 행렬 (수정 없음)
+// 방향여현 행렬
 function getRotationMatrixFromVector(targetVector) {
   const axis_x = new THREE.Vector3(1, 0, 0);
   const axis_y = new THREE.Vector3(0, 1, 0);
+  const axis_z = new THREE.Vector3(0, 0, 1);
+
   const v2 = targetVector.clone().normalize();
+
   const axis = new THREE.Vector3().crossVectors(axis_x, v2);
 
   if (axis.length() < 1e-10) {
-    if (axis_x.dot(v2) > 0) return math.identity(12).toArray();
+    if (axis_x.dot(v2) > 0) {
+      // 단위 행렬 반환
+      return math.identity(12).toArray();
+    } else {
+      const quaternion = new THREE.Quaternion();
+      quaternion.setFromAxisAngle(axis_y, Math.PI);
 
-    const quaternion = new THREE.Quaternion().setFromAxisAngle(axis_y, Math.PI);
-    const r = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
-    const R3x3 = [
-      [r.elements[0], r.elements[1], r.elements[2]],
-      [r.elements[4], r.elements[5], r.elements[6]],
-      [r.elements[8], r.elements[9], r.elements[10]]
-    ];
-    const R12x12 = math.zeros(12, 12).toArray();
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 3; j++) {
-        for (let k = 0; k < 3; k++) {
-          R12x12[i * 3 + j][i * 3 + k] = R3x3[j][k];
-        }
-      }
-    }
-    return R12x12;
-  }
+      const rx = axis_x.clone().applyQuaternion(quaternion);
+      const ry = axis_y.clone().applyQuaternion(quaternion);
+      const rz = axis_z.clone().applyQuaternion(quaternion);
 
-  const angle = Math.acos(axis_x.dot(v2));
-  const quaternion = new THREE.Quaternion().setFromAxisAngle(axis.normalize(), angle);
-  const r = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
-  const R3x3 = [
-    [r.elements[0], r.elements[1], r.elements[2]],
-    [r.elements[4], r.elements[5], r.elements[6]],
-    [r.elements[8], r.elements[9], r.elements[10]]
+        return [
+    [rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z]
   ];
-  const R12x12 = math.zeros(12, 12).toArray();
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 3; j++) {
-      for (let k = 0; k < 3; k++) {
-        R12x12[i * 3 + j][i * 3 + k] = R3x3[j][k];
-      }
     }
   }
-  return R12x12;
+
+  axis.normalize();
+
+  const angle = Math.acos(axis_x.dot(v2) / (axis_x.length() * v2.length()));
+
+  const quaternion = new THREE.Quaternion();
+  quaternion.setFromAxisAngle(axis, angle);
+
+  const rx = axis_x.clone().applyQuaternion(quaternion);
+  const ry = axis_y.clone().applyQuaternion(quaternion);
+  const rz = axis_z.clone().applyQuaternion(quaternion);
+
+  return [
+    [rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z]
+  ];
 }
 
 // 요소 전역 강성 행렬 (수정 없음)
@@ -194,11 +213,6 @@ function PenaltyMethod(stiff, force, supports) { // supports와 nodes를 인수�
     const maxVal = flatStiff.reduce((max, val) => Math.max(max, Math.abs(val)), 0);
     const cnst = 10000 * maxVal;
 
-    if (cnst === 0 || isNaN(cnst)) {
-        console.warn("Warning: Stiffness matrix contains zero or NaN values, penalty method might not be effective.");
-        return; // 또는 오류를 throw 할 수 있습니다.
-    }
-
 
     // 각 자유도(ux, uy, uz, rx, ry, rz)의 속성명과 해당 인덱스 오프셋 매핑
     const dofMap = {
@@ -228,9 +242,8 @@ function PenaltyMethod(stiff, force, supports) { // supports와 nodes를 인수�
             }
         }
     });
+    return [stiff, force]; // 수정된 강성 행렬을 반환합니다.
 
-    // notes: nodes 인수는 현재 함수 내에서 사용되지 않습니다.
-    // 필요 없다면 함수 시그니처에서 제거해도 됩니다.
 }
 
 
@@ -296,8 +309,52 @@ function createGlobalForceVector(pointloads, nodes) {
     return force;
 }
 
-const force = createGlobalForceVector(pointloads, nodes);
+function getLocalDistributedLoads(localdistributedloads, members, nodes, force) {
+    // Check if localdistributedloads is empty or not an array
+  if (!localdistributedloads || localdistributedloads.length === 0) {
+    console.log("No distributed loads to process. Returning early.");
+    return force; // 바로 함수 종료
+  }
 
+   localdistributedloads.forEach(load => {
+    const { member_id, wy, wz } = load;
+    
+    const memberId = members.find(member => member.member_id === member_id);
+      const node1_id = memberId.n1;
+      const node2_id = memberId.n2;
+
+      const node1 = nodes.find(node => node.id === node1_id);
+      const node2 = nodes.find(node => node.id === node2_id);
+      const dx = node2.x - node1.x;
+      const dy = node2.y - node1.y;
+      const dz = node2.z - node1.z;
+      const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+  const targetVector = new THREE.Vector3(dx, dy, dz);
+  const rotationMatrix = getRotationMatrixFromVector(targetVector);
+
+
+      const localLoad = [0, wy*length/2, wz*length/2, 
+         0, -wz*length*length/12, wy*length*length/12, 
+         0, wy*length/2, wz*length/2,
+         0, wz*length*length/12, -wy*length*length/12,];
+      const localLoadTransformed = math.multiply(math.inv(rotationMatrix), localLoad);
+      
+      for (let i = 0; i < 6; i++) {
+         force[(node1_id-1) * 6 + i] += localLoadTransformed[i];
+         force[(node2_id-1) * 6 + i] += localLoadTransformed[i + 6];
+
+      }
+});
+
+ return force;
+
+}
+
+
+
+const force1 = createGlobalForceVector(pointloads, nodes);
+const force2 = getLocalDistributedLoads(localdistributedloads, members, nodes, force1)
 
 
 
@@ -311,11 +368,11 @@ saveMatrixToCSV(stiff, 'stiffness_initial.csv');
 
 // 2) 페널티법 적용 및 저장
 // supports와 nodes를 인수로 전달
-PenaltyMethod(stiff, force, supports);
-saveMatrixToCSV(stiff, 'stiffness_penalty.csv');
+const [stiff_after, force_after] = PenaltyMethod(stiff, force2, supports);
+saveMatrixToCSV(stiff_after, 'stiffness_penalty.csv');
 
 // 3) 변위 계산 및 저장
-const u = math.multiply(math.inv(stiff), force);
+const u = math.multiply(math.inv(stiff_after), force_after);
 // 1차원 벡터 u를 CSV로 저장하기 위해 2차원 배열 [u] 형태로 전달
 saveMatrixToCSV([u], 'displacement_u.csv');
 

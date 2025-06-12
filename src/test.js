@@ -1,3 +1,6 @@
+import * as THREE from 'three';
+import * as math from 'mathjs';
+
 const force = [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  240000,  0,  0,  0,  0,  -60000,  0,  0,  0,  -180000,  0,  0,  0,  0,  0,  0,]
 
 const localdistributedloads = [
@@ -20,56 +23,76 @@ const members = [
   { member_id: 4, n1: 4, n2: 5, sec_id: 1 }
 ];
 
+// 방향여현 행렬
 function getRotationMatrixFromVector(targetVector) {
   const axis_x = new THREE.Vector3(1, 0, 0);
   const axis_y = new THREE.Vector3(0, 1, 0);
+  const axis_z = new THREE.Vector3(0, 0, 1);
+
   const v2 = targetVector.clone().normalize();
+
   const axis = new THREE.Vector3().crossVectors(axis_x, v2);
 
   if (axis.length() < 1e-10) {
-    if (axis_x.dot(v2) > 0) return math.identity(12).toArray();
+    if (axis_x.dot(v2) > 0) {
+      // 단위 행렬 반환
+      return math.identity(12).toArray();
+    } else {
+      const quaternion = new THREE.Quaternion();
+      quaternion.setFromAxisAngle(axis_y, Math.PI);
 
-    const quaternion = new THREE.Quaternion().setFromAxisAngle(axis_y, Math.PI);
-    const r = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
-    const R3x3 = [
-      [r.elements[0], r.elements[1], r.elements[2]],
-      [r.elements[4], r.elements[5], r.elements[6]],
-      [r.elements[8], r.elements[9], r.elements[10]]
-    ];
-    const R12x12 = math.zeros(12, 12).toArray();
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 3; j++) {
-        for (let k = 0; k < 3; k++) {
-          R12x12[i * 3 + j][i * 3 + k] = R3x3[j][k];
-        }
-      }
-    }
-    return R12x12;
-  }
+      const rx = axis_x.clone().applyQuaternion(quaternion);
+      const ry = axis_y.clone().applyQuaternion(quaternion);
+      const rz = axis_z.clone().applyQuaternion(quaternion);
 
-  const angle = Math.acos(axis_x.dot(v2));
-  const quaternion = new THREE.Quaternion().setFromAxisAngle(axis.normalize(), angle);
-  const r = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
-  const R3x3 = [
-    [r.elements[0], r.elements[1], r.elements[2]],
-    [r.elements[4], r.elements[5], r.elements[6]],
-    [r.elements[8], r.elements[9], r.elements[10]]
+        return [
+    [rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z]
   ];
-  const R12x12 = math.zeros(12, 12).toArray();
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 3; j++) {
-      for (let k = 0; k < 3; k++) {
-        R12x12[i * 3 + j][i * 3 + k] = R3x3[j][k];
-      }
     }
   }
-  return R12x12;
+
+  axis.normalize();
+
+  const angle = Math.acos(axis_x.dot(v2) / (axis_x.length() * v2.length()));
+
+  const quaternion = new THREE.Quaternion();
+  quaternion.setFromAxisAngle(axis, angle);
+
+  const rx = axis_x.clone().applyQuaternion(quaternion);
+  const ry = axis_y.clone().applyQuaternion(quaternion);
+  const rz = axis_z.clone().applyQuaternion(quaternion);
+
+  return [
+    [rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rx.x, rx.y, rx.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, ry.x, ry.y, ry.z],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, rz.x, rz.y, rz.z]
+  ];
 }
 
 
 
 
-function getLocalDistributedLoads(localdistributedloads, members, nodes) {
+function getLocalDistributedLoads(localdistributedloads, members, nodes, force) {
    localdistributedloads.forEach(load => {
     const { member_id, wy, wz } = load;
     
@@ -84,12 +107,24 @@ function getLocalDistributedLoads(localdistributedloads, members, nodes) {
       const dz = node2.z - node1.z;
       const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
+  const targetVector = new THREE.Vector3(dx, dy, dz);
+  const rotationMatrix = getRotationMatrixFromVector(targetVector);
+
+
       const localLoad = [0, wy*length/2, wz*length/2, 
          0, -wz*length*length/12, wy*length*length/12, 
          0, wy*length/2, wz*length/2,
          0, wz*length*length/12, -wy*length*length/12,];
+      const localLoadTransformed = math.multiply(math.inv(rotationMatrix), localLoad);
+      
+      for (let i = 0; i < 6; i++) {
+         force[(node1_id-1) * 6 + i] += localLoadTransformed[i];
+         force[(node2_id-1) * 6 + i] += localLoadTransformed[i + 6];
 
-      console.log(`Member ID: ${member_id}, Local Distributed Load:`, localLoad);
-      });
+      }
+});
+
+ return force;
+
 }
-getLocalDistributedLoads(localdistributedloads, members, nodes);
+getLocalDistributedLoads(localdistributedloads, members, nodes, force);
