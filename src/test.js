@@ -5,43 +5,91 @@ const localdistributedloads = [
   { member_id: 2, wy: -4000, wz: 0 }
 ];
 
-const ed = new Array(12).fill(0);
-const edp = new Array(12).fill(0);
+const nodes = [
+  { id: 1, x: 0, y: 0, z: 0 },
+  { id: 2, x: 0, y: 3, z: 0 },
+  { id: 3, x: 3, y: 3, z: 0 },
+  { id: 4, x: 6, y: 3, z: 0 },
+  { id: 5, x: 9, y: 0, z: 3 }
+];
 
-function AddLoads(force){
-    localdistributedloads.forEach(load => {
+const members = [
+  { member_id: 1, n1: 1, n2: 2, sec_id: 1 },
+  { member_id: 2, n1: 2, n2: 3, sec_id: 1 },
+  { member_id: 3, n1: 3, n2: 4, sec_id: 1 },
+  { member_id: 4, n1: 4, n2: 5, sec_id: 1 }
+];
 
+function getRotationMatrixFromVector(targetVector) {
+  const axis_x = new THREE.Vector3(1, 0, 0);
+  const axis_y = new THREE.Vector3(0, 1, 0);
+  const v2 = targetVector.clone().normalize();
+  const axis = new THREE.Vector3().crossVectors(axis_x, v2);
 
-//----- loads due to uniformly distributed load on element
-     for (n = 0; n < ne; n++) {
-           ElemStiff(n)
-           i1 = noc[n][0] - 1
-           i2 = noc[n][1] - 1
-           x21 = x[i2][0] - x[i1][0]
-           y21 = x[i2][1] - x[i1][1]
-           z21 = x[i2][2] - x[i1][2]
-           el = Math.sqrt(x21 * x21 + y21 * y21 + z21 * z21)
-           ed[0] = 0
-           ed[1] = udl[n][0] * el / 2
-           ed[2] = udl[n][1] * el / 2
-           ed[3] = 0
-           ed[4] = -udl[n][1] * el * el / 12
-           ed[5] = udl[n][0] * el * el / 12
-           ed[6] = 0
-           ed[7] = ed[1]
-           ed[8] = ed[2]
-           ed[9] = 0
-           ed[10] = -ed[4]
-           ed[11] = -ed[5]
-           for (i = 0; i < 12; i++) {
-              edp[i] = 0
-              for (k = 0; k < 12; k++) {
-                 edp[i] = edp[i] + alambda[k][i] * ed[k]
-              }
-           }
-           for (i = 0; i < 6; i++) {
-              force[6 * i1 + i] = force[6 * i1 + i] + edp[i]
-              force[6 * i2 + i] = force[6 * i2 + i] + edp[i + 6]
-           }
+  if (axis.length() < 1e-10) {
+    if (axis_x.dot(v2) > 0) return math.identity(12).toArray();
+
+    const quaternion = new THREE.Quaternion().setFromAxisAngle(axis_y, Math.PI);
+    const r = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+    const R3x3 = [
+      [r.elements[0], r.elements[1], r.elements[2]],
+      [r.elements[4], r.elements[5], r.elements[6]],
+      [r.elements[8], r.elements[9], r.elements[10]]
+    ];
+    const R12x12 = math.zeros(12, 12).toArray();
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 3; j++) {
+        for (let k = 0; k < 3; k++) {
+          R12x12[i * 3 + j][i * 3 + k] = R3x3[j][k];
         }
-     }
+      }
+    }
+    return R12x12;
+  }
+
+  const angle = Math.acos(axis_x.dot(v2));
+  const quaternion = new THREE.Quaternion().setFromAxisAngle(axis.normalize(), angle);
+  const r = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+  const R3x3 = [
+    [r.elements[0], r.elements[1], r.elements[2]],
+    [r.elements[4], r.elements[5], r.elements[6]],
+    [r.elements[8], r.elements[9], r.elements[10]]
+  ];
+  const R12x12 = math.zeros(12, 12).toArray();
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 3; j++) {
+      for (let k = 0; k < 3; k++) {
+        R12x12[i * 3 + j][i * 3 + k] = R3x3[j][k];
+      }
+    }
+  }
+  return R12x12;
+}
+
+
+
+
+function getLocalDistributedLoads(localdistributedloads, members, nodes) {
+   localdistributedloads.forEach(load => {
+    const { member_id, wy, wz } = load;
+    
+    const memberId = members.find(member => member.member_id === member_id);
+      const node1_id = memberId.n1;
+      const node2_id = memberId.n2;
+
+      const node1 = nodes.find(node => node.id === node1_id);
+      const node2 = nodes.find(node => node.id === node2_id);
+      const dx = node2.x - node1.x;
+      const dy = node2.y - node1.y;
+      const dz = node2.z - node1.z;
+      const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      const localLoad = [0, wy*length/2, wz*length/2, 
+         0, -wz*length*length/12, wy*length*length/12, 
+         0, wy*length/2, wz*length/2,
+         0, wz*length*length/12, -wy*length*length/12,];
+
+      console.log(`Member ID: ${member_id}, Local Distributed Load:`, localLoad);
+      });
+}
+getLocalDistributedLoads(localdistributedloads, members, nodes);
