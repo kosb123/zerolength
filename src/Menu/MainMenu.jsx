@@ -9,6 +9,7 @@ function MainMenu({ onMenuClick }) {
     { id: 'Support', label: 'Support' },
     { id: 'Materials', label: 'Materials' },
     { id: 'Sections', label: 'Sections' },
+    { id: 'Variables', label: 'Variables' },
     { id: 'Load', label: 'Load' },
     { id: 'Solve', label: 'Solve' },
   ];
