@@ -13,7 +13,8 @@ body {
 
 /* 메뉴바 스타일 */
 #sidebar {
-  width: 350px; /* 고정 너비 */
+  width: 350px;
+  /* 고정 너비 */
   background-color: #000000;
   color: white;
   padding: 20px;
@@ -23,7 +24,8 @@ body {
 
 /* 3D 캔버스 영역 */
 #canvas-container {
-  flex: 1; /* 남은 공간 모두 차지 */
+  flex: 1;
+  /* 남은 공간 모두 차지 */
 }
 
 /* Canvas가 부모 크기에 맞도록 */
@@ -31,4 +33,17 @@ canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
+}
+
+.selection-box {
+  position: absolute;
+  border: 1px solid #0099ff;
+  background-color: rgba(0, 153, 255, 0.3);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.selection-box.crossing {
+  border: 1px dashed #28a745;
+  background-color: rgba(40, 167, 69, 0.3);
 }
