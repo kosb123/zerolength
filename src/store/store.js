@@ -1,25 +1,40 @@
 import { create } from 'zustand';
 
-const parameter = create(set => ({
-  nodes: [],         // 빈 배열로 초기화
+const useStore = create((set) => ({
+  nodes: [],
   members: [],
-  sections: [],
-  materials: [],
-  forces: [],
-  displacements: [],
+  materials: [], // Combined Material & Section Properties
 
-  // 상태 변경 함수도 필요하면 추가
+  // Boundary Conditions & Loads (Solver Input)
+  constraints: [], // Array of constrained DOFs (1-based), e.g., [1, 2, 3, ...]
+  forces: [],      // Flat force vector (size = 6 * nodeCount)
+
+  // Analysis Results
+  analysisResults: {
+    displacements: null, // Flat vector
+    reactions: null,     // Flat vector
+    elementForces: [],   // Array of { elem_id, f_local }
+  },
+
+  // Actions
   setNodes: (nodes) => set({ nodes }),
   setMembers: (members) => set({ members }),
-  setSections: (sections) => set({ sections }),
   setMaterials: (materials) => set({ materials }),
-  setForce: (forces) => set({ forces }),
-  setDisplacement: (displacements) => set({ displacements }),
+  setConstraints: (constraints) => set({ constraints }),
+  setForces: (forces) => set({ forces }),
+
+  setAnalysisResults: (results) => set({ analysisResults: results }),
+
+  reset: () => set({
+    nodes: [], members: [], materials: [],
+    constraints: [], forces: [],
+    analysisResults: { displacements: null, reactions: null, elementForces: [] }
+  }),
 }));
 
-// 전역에 할당 (개발 편의를 위해)
+// Expose store to window for debugging
 if (typeof window !== 'undefined') {
-  window.__STORE__ = parameter;
+  window.__STORE__ = useStore;
 }
 
-export default parameter;
+export default useStore;

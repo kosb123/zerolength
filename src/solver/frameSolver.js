@@ -177,10 +177,94 @@ function applyPenalty(stiff, force, constraints) {
 }
 
 // Main solver function
+// Main solver function
 export function computeDisplacements({ nodes, members, materials, force, constraints }) {
-  const stiff = assembleStiffness(nodes, members, materials);
-  applyPenalty(stiff, force, constraints);
-  const u = math.multiply(math.inv(stiff), force);
-  return u;
+  // 1. Assemble Global Stiffness Matrix (K) - Pure K without penalty
+  const K = assembleStiffness(nodes, members, materials);
+
+  // 2. Prepare for Solver (Penalty Method)
+  // Deep copy K and force because applyPenalty modifies them in-place
+  const K_solver = K.map(row => [...row]);
+  const F_solver = [...force];
+
+  applyPenalty(K_solver, F_solver, constraints);
+
+  // 3. Solve for Displacements (u)
+  // u = inv(K_solver) * F_solver
+  // Note: For larger systems, LU decomposition is better, but inv is okay for now.
+  let u;
+  try {
+    u = math.multiply(math.inv(K_solver), F_solver);
+  } catch (e) {
+    console.error("Singular matrix or solver error:", e);
+    return null;
+  }
+
+  // 4. Calculate Reactions (R)
+  // R = K * u - F_applied
+  // This R vector will have values at supported DOFs matching the reaction output.
+  // At free DOFs, it should be close to 0 (equilibrium check).
+  const Ku = math.multiply(K, u);
+  const R = math.subtract(Ku, force);
+
+  // 5. Calculate Member Forces (Local Coordinates)
+  const elementResults = members.map((element) => {
+    const node1 = nodes.find((n) => n.id === element.n1);
+    const node2 = nodes.find((n) => n.id === element.n2);
+    const material = materials.find((m) => m.mat_id === element.sec_id);
+
+    // Geometry
+    const { dx, dy, dz } = calcNodeDifferences(node1, node2);
+    const L = calcLength(dx, dy, dz);
+
+    // Displacements for this element (Global)
+    // Indices in global u vector (0-based)
+    const n1_idx = (element.n1 - 1) * 6;
+    const n2_idx = (element.n2 - 1) * 6;
+
+    // Extract 12x1 vector for this element
+    const u_elem_global = [
+      ...u.slice(n1_idx, n1_idx + 6),
+      ...u.slice(n2_idx, n2_idx + 6)
+    ];
+
+    // Transformation Matrix (Global to Local)
+    // T matrix (12x12) is the transpose of the Rotation Matrix we used for K assembly?
+    // Let's check getRotationMatrixFromVector. It returns R s.t. K_global = R^T * K_local * R
+    // So u_global = R^T * u_local  => u_local = R * u_global ?
+    // Wait, typically u_local = T * u_global.
+    // In standard texts: K_global = T^T * K_local * T.
+    // In the code: globalStiffness = transpose(rotationMatrix) * local * rotationMatrix
+    // So 'rotationMatrix' in the code corresponds to T.
+    // Thus u_local = T * u_global.
+
+    const targetVector = new THREE.Vector3(dx, dy, dz);
+    const T = getRotationMatrixFromVector(targetVector); // This function returns T (12x12)
+
+    const u_elem_local = math.multiply(T, u_elem_global);
+
+    // Local Stiffness Matrix
+    const EA_L = (material.E * material.area) / L;
+    const EIy_L = (material.E * material.Iy) / L;
+    const EIz_L = (material.E * material.Iz) / L;
+    const GJ_L = (material.G * material.J) / L;
+
+    const k_local = createLocalStiffnessMatrix(EA_L, EIy_L, EIz_L, GJ_L, L);
+
+    // Forces ends (Local) = k_local * u_elem_local
+    // Result is [fx1, fy1, fz1, mx1, my1, mz1, fx2, fy2, fz2, mx2, my2, mz2]
+    const f_local = math.multiply(k_local, u_elem_local);
+
+    return {
+      ele_id: element.elem_id,
+      f_local: f_local
+    };
+  });
+
+  return {
+    displacements: u,
+    reactions: R,
+    elementForces: elementResults
+  };
 }
 
