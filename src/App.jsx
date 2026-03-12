@@ -40,35 +40,60 @@ function App() {
   }, [showStatsPanel]);
 
   useEffect(() => {
-    // Initial Data Setup (from Frame.js example)
+    // 3D Box Frame Example (8 Nodes, 12 Members)
+    // Y is typically the vertical axis in Three.js
     const nodes = [
+      // Base nodes (y = 0)
       { id: 1, x: 0, y: 0, z: 0 },
-      { id: 2, x: 0, y: 3, z: 0 },
-      { id: 3, x: 3, y: 3, z: 0 },
-      { id: 4, x: 6, y: 3, z: 0 },
-      { id: 5, x: 9, y: 0, z: 3 }
+      { id: 2, x: 5, y: 0, z: 0 },
+      { id: 3, x: 5, y: 0, z: 5 },
+      { id: 4, x: 0, y: 0, z: 5 },
+      // Top nodes (y = 5)
+      { id: 5, x: 0, y: 5, z: 0 },
+      { id: 6, x: 5, y: 5, z: 0 },
+      { id: 7, x: 5, y: 5, z: 5 },
+      { id: 8, x: 0, y: 5, z: 5 },
     ];
 
     const members = [
+      // Base beams
       { elem_id: 1, n1: 1, n2: 2, sec_id: 1 },
       { elem_id: 2, n1: 2, n2: 3, sec_id: 1 },
       { elem_id: 3, n1: 3, n2: 4, sec_id: 1 },
-      { elem_id: 4, n1: 4, n2: 5, sec_id: 1 }
+      { elem_id: 4, n1: 4, n2: 1, sec_id: 1 },
+      // Columns
+      { elem_id: 5, n1: 1, n2: 5, sec_id: 1 },
+      { elem_id: 6, n1: 2, n2: 6, sec_id: 1 },
+      { elem_id: 7, n1: 3, n2: 7, sec_id: 1 },
+      { elem_id: 8, n1: 4, n2: 8, sec_id: 1 },
+      // Top beams
+      { elem_id: 9, n1: 5, n2: 6, sec_id: 1 },
+      { elem_id: 10, n1: 6, n2: 7, sec_id: 1 },
+      { elem_id: 11, n1: 7, n2: 8, sec_id: 1 },
+      { elem_id: 12, n1: 8, n2: 5, sec_id: 1 }
     ];
 
     const materials = [
-      { mat_id: 1, area: 0.01, Iy: 1e-3, Iz: 1e-3, J: 2e-3, E: 200e9, G: 80e9 }
+      { mat_id: 1, area: 0.1, Iy: 1e-4, Iz: 1e-4, J: 2e-4, E: 200e9, G: 80e9 }
     ];
 
-    const force = new Array(30).fill(0);
-    // Node 3 (idx 2): Fz = 240000
-    force[2 * 6 + 2] = 240000;
-    // Node 4 (idx 3): Fy = -60000, Mz = -180000
-    force[3 * 6 + 1] = -60000;
-    force[3 * 6 + 5] = -180000;
+    // Force vector: 8 nodes * 6 DOFs = 48
+    const force = new Array(48).fill(0);
+    // Apply lateral force (Fx) and downward gravity load (Fy) on top nodes
+    const Fx = 100000;
+    const Fy = -500000;
+    
+    // Node 5 (idx 4, DOFs 24-29)
+    force[4 * 6 + 0] = Fx; force[4 * 6 + 1] = Fy;
+    // Node 6 (idx 5, DOFs 30-35)
+    force[5 * 6 + 0] = Fx; force[5 * 6 + 1] = Fy;
+    // Node 7 (idx 6, DOFs 36-41)
+    force[6 * 6 + 0] = Fx; force[6 * 6 + 1] = Fy;
+    // Node 8 (idx 7, DOFs 42-47)
+    force[7 * 6 + 0] = Fx; force[7 * 6 + 1] = Fy;
 
-    // Fixed Supports at Node 1 (1-6) and Node 5 (25-30)
-    const constraints = [1, 2, 3, 4, 5, 6, 25, 26, 27, 28, 29, 30];
+    // Fixed Supports at Nodes 1, 2, 3, 4 (DOFs 1 through 24)
+    const constraints = Array.from({ length: 24 }, (_, i) => i + 1);
 
     setNodes(nodes);
     setMembers(members);

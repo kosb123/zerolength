@@ -65,6 +65,9 @@ function MyElement3D() {
   const nodes = parameter(state => state.nodes || []);
   const members = parameter(state => state.members || []);
   const nodeSettings = parameter(state => state.nodeSettings || { size: 1, color: '#000000' });
+  
+  const analysisResults = parameter(state => state.analysisResults);
+  const deformationScale = parameter(state => state.deformationScale);
 
   // 노드ID별 좌표를 빠르게 찾기 위한 Map 생성 (useMemo로 최적화)
   const nodeMap = useMemo(() => {
@@ -75,8 +78,9 @@ function MyElement3D() {
     return map;
   }, [nodes]);
 
-  // 여러 개의 선을 한 번의 Draw Call로 그리기 위해 geometry 최적화
+  // 여러 개의 선을 한 번의 Draw Call로 그리기 위해 geometry 최적화 (Original Shape)
   const linesGeometry = useMemo(() => {
+    if (members.length === 0 || nodeMap.size === 0) return null;
     const positions = [];
     members.forEach((elem) => {
       const start = nodeMap.get(elem.n1);
@@ -88,12 +92,50 @@ function MyElement3D() {
     });
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(positions, 3)
-    );
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     return geometry;
   }, [members, nodeMap]);
+
+  // 변형된 노드 좌표 계산 (Deformed Shape)
+  const { deformedNodes, deformedLinesGeometry } = useMemo(() => {
+    if (!analysisResults || !analysisResults.displacements || nodes.length === 0) {
+      return { deformedNodes: [], deformedLinesGeometry: null };
+    }
+
+    const { displacements } = analysisResults;
+    const deformedMap = new Map();
+    const dNodes = [];
+
+    nodes.forEach(node => {
+      // 0-based index for DOFs. u_x, u_y, u_z are the first 3 DOFs for a node.
+      const idx = (node.id - 1) * 6;
+      const ux = displacements[idx + 0] || 0;
+      const uy = displacements[idx + 1] || 0;
+      const uz = displacements[idx + 2] || 0;
+
+      const dx = node.x + ux * deformationScale;
+      const dy = node.y + uy * deformationScale;
+      const dz = node.z + uz * deformationScale;
+
+      dNodes.push({ id: node.id, x: dx, y: dy, z: dz });
+      deformedMap.set(node.id, new THREE.Vector3(dx, dy, dz));
+    });
+
+    const positions = [];
+    members.forEach((elem) => {
+      const start = deformedMap.get(elem.n1);
+      const end = deformedMap.get(elem.n2);
+      if (start && end) {
+        positions.push(start.x, start.y, start.z);
+        positions.push(end.x, end.y, end.z);
+      }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+    return { deformedNodes: dNodes, deformedLinesGeometry: geometry };
+  }, [nodes, members, analysisResults, deformationScale]);
 
   const controlsRef = useRef();
 
@@ -161,24 +203,32 @@ function MyElement3D() {
         listenToKeyEvents={window}
       />
 
-      {/* 노드 구체 표시 (단일 Draw Call로 최적화됨) */}
-      <NodeInstancedMesh nodes={nodes} color={nodeSettings.color} size={nodeSettings.size} />
+      {/* 원래 형태(Original Shape) - 반투명 처리 */}
+      <group opacity={0.3} transparent={true}>
+        <NodeInstancedMesh nodes={nodes} color={nodeSettings.color} size={nodeSettings.size} />
+        {linesGeometry && (
+          <lineSegments geometry={linesGeometry}>
+            <lineBasicMaterial attach="material" color="gray" opacity={0.4} transparent={true} />
+          </lineSegments>
+        )}
+      </group>
 
-      {/* 노드 텍스트 번호 표시 (텍스트는 서로 다름) */}
+      {/* 노드 텍스트 번호 표시 (원래 위치) */}
       {nodes.map(({ id, x, y, z }, idx) => (
-        <NodeLabel 
-          key={idx} 
-          pos={[x, y, z]} 
-          id={id} 
-          color={nodeSettings.color} 
-          size={nodeSettings.size} 
-        />
+        <NodeLabel key={idx} pos={[x, y, z]} id={id} color="black" size={nodeSettings.size} />
       ))}
 
-      {/* 멤버별 연결선 그리기 (최적화됨: 단일 Draw Call) */}
-      <lineSegments geometry={linesGeometry}>
-        <lineBasicMaterial attach="material" color="orange" />
-      </lineSegments>
+      {/* 변형된 형태 (Deformed Shape) - 빨간색으로 오버레이 */}
+      {deformedNodes.length > 0 && (
+        <group>
+          <NodeInstancedMesh nodes={deformedNodes} color="red" size={nodeSettings.size * 1.2} />
+          {deformedLinesGeometry && (
+            <lineSegments geometry={deformedLinesGeometry}>
+              <lineBasicMaterial attach="material" color="red" linewidth={2} />
+            </lineSegments>
+          )}
+        </group>
+      )}
     </>
   );
 }

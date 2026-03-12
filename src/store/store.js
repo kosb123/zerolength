@@ -9,6 +9,9 @@ const useStore = create((set) => ({
   constraints: [], // Array of constrained DOFs (1-based), e.g., [1, 2, 3, ...]
   forces: [],      // Flat force vector (size = 6 * nodeCount)
 
+  deformationScale: 10,
+  setDeformationScale: (scale) => set({ deformationScale: scale }),
+
   // Analysis Results
   analysisResults: {
     displacements: null, // Flat vector
