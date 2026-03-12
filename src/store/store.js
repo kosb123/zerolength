@@ -23,6 +23,14 @@ const useStore = create((set) => ({
   setConstraints: (constraints) => set({ constraints }),
   setForces: (forces) => set({ forces }),
 
+  nodeSettings: { size: 1, color: '#000000' },
+  setNodeSettings: (settings) => set({ nodeSettings: settings }),
+
+  showStatsPanel: true,
+  setShowStatsPanel: (show) => set({ showStatsPanel: show }),
+  showEnginePanel: true,
+  setShowEnginePanel: (show) => set({ showEnginePanel: show }),
+
   setAnalysisResults: (results) => set({ analysisResults: results }),
 
   reset: () => set({

@@ -1,8 +1,62 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import parameter from './store/store';
+
+// 단일 Draw Call로 구체(노드)를 렌더링하여 성능을 대폭 높이는 InstancedMesh 컴포넌트
+function NodeInstancedMesh({ nodes, color, size }) {
+  const meshRef = useRef();
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  useFrame(({ camera }) => {
+    if (!meshRef.current || nodes.length === 0) return;
+    
+    nodes.forEach((node, i) => {
+      dummy.position.set(node.x, node.y, node.z);
+      
+      const distance = camera.position.distanceTo(dummy.position);
+      const scale = distance * 0.01 * size;
+      
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    });
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  if (nodes.length === 0) return null;
+
+  return (
+    <instancedMesh ref={meshRef} args={[null, null, nodes.length]}>
+      <sphereGeometry args={[1, 16, 16]} />
+      <meshBasicMaterial color={color} />
+    </instancedMesh>
+  );
+}
+
+// 텍스트(ID) 표시는 노드마다 내용이 달라 개별 렌더링합니다.
+function NodeLabel({ pos, id, color, size }) {
+  const groupRef = useRef();
+
+  useFrame(({ camera }) => {
+    if (groupRef.current) {
+      const distance = camera.position.distanceTo(groupRef.current.position);
+      const scale = distance * 0.01 * size;
+      groupRef.current.scale.set(scale, scale, scale);
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={pos}>
+      <Billboard>
+        <Text position={[1.5, 1.5, 0]} fontSize={1.5} color={color} anchorX="left" anchorY="bottom">
+          {id}
+        </Text>
+      </Billboard>
+    </group>
+  );
+}
 
 function MyElement3D() {
   const refMesh = useRef();
@@ -10,12 +64,36 @@ function MyElement3D() {
   // Zustand store에서 상태 읽기
   const nodes = parameter(state => state.nodes || []);
   const members = parameter(state => state.members || []);
+  const nodeSettings = parameter(state => state.nodeSettings || { size: 1, color: '#000000' });
 
-  // 노드ID별 좌표를 빠르게 찾기 위한 Map 생성
-  const nodeMap = new Map();
-  nodes.forEach(({ id, x, y, z }) => {
-    nodeMap.set(id, new THREE.Vector3(x, y, z));
-  });
+  // 노드ID별 좌표를 빠르게 찾기 위한 Map 생성 (useMemo로 최적화)
+  const nodeMap = useMemo(() => {
+    const map = new Map();
+    nodes.forEach(({ id, x, y, z }) => {
+      map.set(id, new THREE.Vector3(x, y, z));
+    });
+    return map;
+  }, [nodes]);
+
+  // 여러 개의 선을 한 번의 Draw Call로 그리기 위해 geometry 최적화
+  const linesGeometry = useMemo(() => {
+    const positions = [];
+    members.forEach((elem) => {
+      const start = nodeMap.get(elem.n1);
+      const end = nodeMap.get(elem.n2);
+      if (start && end) {
+        positions.push(start.x, start.y, start.z);
+        positions.push(end.x, end.y, end.z);
+      }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(positions, 3)
+    );
+    return geometry;
+  }, [members, nodeMap]);
 
   const controlsRef = useRef();
 
@@ -83,43 +161,24 @@ function MyElement3D() {
         listenToKeyEvents={window}
       />
 
-      {/* 노드 표시 (구 + 번호) */}
+      {/* 노드 구체 표시 (단일 Draw Call로 최적화됨) */}
+      <NodeInstancedMesh nodes={nodes} color={nodeSettings.color} size={nodeSettings.size} />
+
+      {/* 노드 텍스트 번호 표시 (텍스트는 서로 다름) */}
       {nodes.map(({ id, x, y, z }, idx) => (
-        <group key={idx} position={[x, y, z]}>
-          <mesh>
-            <sphereGeometry args={[0.05, 16, 16]} />
-            <meshBasicMaterial color="black" />
-          </mesh>
-          <Billboard>
-            <Text
-              position={[0.15, 0.15, 0]}
-              fontSize={0.15}
-              color="black"
-              anchorX="left"
-              anchorY="bottom"
-            >
-              {id}
-            </Text>
-          </Billboard>
-        </group>
+        <NodeLabel 
+          key={idx} 
+          pos={[x, y, z]} 
+          id={id} 
+          color={nodeSettings.color} 
+          size={nodeSettings.size} 
+        />
       ))}
 
-      {/* 멤버별 연결선 그리기 */}
-      {members.map((elem, idx) => {
-        const start = nodeMap.get(elem.n1);
-        const end = nodeMap.get(elem.n2);
-
-        if (!start || !end) return null;
-
-        const points = [start, end];
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-        return (
-          <line key={idx} geometry={geometry}>
-            <lineBasicMaterial attach="material" color="orange" linewidth={2} />
-          </line>
-        );
-      })}
+      {/* 멤버별 연결선 그리기 (최적화됨: 단일 Draw Call) */}
+      <lineSegments geometry={linesGeometry}>
+        <lineBasicMaterial attach="material" color="orange" />
+      </lineSegments>
     </>
   );
 }

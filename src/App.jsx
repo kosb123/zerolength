@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { Canvas } from '@react-three/fiber';
+import { StatsGl } from '@react-three/drei';
 import MyElement3D from './MyElement3D';
+import PerformanceMonitor from './PerformanceMonitor';
 import NodeMenu from './Menu/NodeMenu';
 import MainMenu from './Menu/MainMenu';
 import Members from './Menu/Members';
 import SectionMenu from './Menu/SectionMenu';
+import SettingsMenu from './Menu/SettingsMenu';
+import SelectionWrapper from './SelectionWrapper';
 import useStore from './store/store';
 import { computeDisplacements } from './solver/frameSolver';
+import { makeDraggable } from './utils/draggable';
 
 function App() {
   const [activeMenu, setActiveMenu] = useState('Main');
@@ -18,6 +23,21 @@ function App() {
   const setConstraints = useStore((state) => state.setConstraints);
   const setForces = useStore((state) => state.setForces);
   const setAnalysisResults = useStore((state) => state.setAnalysisResults);
+
+  const showStatsPanel = useStore((state) => state.showStatsPanel);
+  const showEnginePanel = useStore((state) => state.showEnginePanel);
+
+  const statsContainerRef = useRef(null);
+
+  useEffect(() => {
+    let cleanup = null;
+    if (showStatsPanel && statsContainerRef.current) {
+      cleanup = makeDraggable(statsContainerRef.current);
+    }
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [showStatsPanel]);
 
   useEffect(() => {
     // Initial Data Setup (from Frame.js example)
@@ -56,70 +76,6 @@ function App() {
     setForces(force);
     setConstraints(constraints);
   }, []);
-
-  // Selection Box State
-  const [selectionBox, setSelectionBox] = useState({
-    visible: false,
-    startX: 0,
-    startY: 0,
-    currX: 0,
-    currY: 0,
-  });
-
-  const handleMouseDown = (e) => {
-    // Only trigger on Left Click (button 0)
-    if (e.button !== 0) return;
-
-    // Get container offset to handle relative coordinates correctly
-    const container = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - container.left;
-    const y = e.clientY - container.top;
-
-    setSelectionBox({
-      visible: true,
-      startX: x,
-      startY: y,
-      currX: x,
-      currY: y,
-    });
-  };
-
-  const handleMouseMove = (e) => {
-    if (!selectionBox.visible) return;
-
-    const container = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - container.left;
-    const y = e.clientY - container.top;
-
-    setSelectionBox(prev => ({
-      ...prev,
-      currX: x,
-      currY: y,
-    }));
-  };
-
-  const handleMouseUp = () => {
-    if (selectionBox.visible) {
-      // Logic for selecting elements can go here later
-      setSelectionBox(prev => ({ ...prev, visible: false }));
-    }
-  };
-
-  // Calculate box style
-  const getBoxStyle = () => {
-    const { startX, startY, currX, currY } = selectionBox;
-    const left = Math.min(startX, currX);
-    const top = Math.min(startY, currY);
-    const width = Math.abs(currX - startX);
-    const height = Math.abs(currY - startY);
-
-    return {
-      left: left,
-      top: top,
-      width: width,
-      height: height,
-    };
-  };
 
   function handleMenuClick(menu) {
     if (menu === 'Solve') {
@@ -163,26 +119,31 @@ function App() {
         {activeMenu === 'Sections' && (
           <SectionMenu onBack={() => setActiveMenu('Main')} />
         )}
+        {activeMenu === 'Settings' && (
+          <SettingsMenu onBack={() => setActiveMenu('Main')} />
+        )}
       </nav>
 
-      <main
-        id="canvas-container"
-        style={{ position: 'relative' }} // Ensure overlay positioning
-        onPointerDown={handleMouseDown}
-        onPointerMove={handleMouseMove}
-        onPointerUp={handleMouseUp}
-        onPointerLeave={handleMouseUp} // Stop dragging if left canvas
-      >
-        <Canvas>
-          <MyElement3D />
-        </Canvas>
-
-        {selectionBox.visible && (
+      <main id="canvas-container" style={{ position: 'relative' }}>
+        {showStatsPanel && (
           <div
-            className={`selection-box ${selectionBox.currX < selectionBox.startX ? 'crossing' : ''}`}
-            style={getBoxStyle()}
+            ref={statsContainerRef}
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              zIndex: 1000,
+              pointerEvents: 'auto',
+            }}
           />
         )}
+        <SelectionWrapper>
+          <Canvas>
+            <MyElement3D />
+            {showEnginePanel && <PerformanceMonitor />}
+            {showStatsPanel && <StatsGl parent={statsContainerRef} />}
+          </Canvas>
+        </SelectionWrapper>
       </main>
     </div>
   );

@@ -10,6 +10,7 @@ function MainMenu({ onMenuClick }) {
     { id: 'Materials', label: 'Materials' },
     { id: 'Sections', label: 'Sections' },
     { id: 'Load', label: 'Load' },
+    { id: 'Settings', label: 'Settings' },
     { id: 'Solve', label: 'Solve' },
   ];
 
